@@ -2,7 +2,8 @@ FROM ubuntu:22.04
 
 RUN apt-get update
 RUN apt-get upgrade -y
-RUN DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y bc bison ca-certificates clang flex git gnuplot libboost-dev libgmp3-dev libssl-dev locales make m4 opam python3 python3-pip vim
+# Added <pkg-config libgmp-dev> to below line
+RUN DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y bc bison ca-certificates clang flex git gnuplot libboost-dev libgmp3-dev libssl-dev locales make m4 opam python3 python3-pip vim pkg-config libgmp-dev
 
 RUN adduser --disabled-password --gecos "" hydra
 RUN locale-gen en_US.UTF-8 &&\
@@ -19,6 +20,8 @@ WORKDIR ${WDIR}
 
 # Aerial
 RUN git clone https://bitbucket.org/traytel/aerial.git
+# Replace all Pervasives.compare calls with Stdlib.compare across Aerial sources
+RUN find aerial/src -type f -name "*.ml*" -exec sed -i 's/Pervasives.compare/Stdlib.compare/g' {} +
 RUN eval `opam config env`; make -C aerial
 
 # MonPoly/VeriMon

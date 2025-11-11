@@ -6,6 +6,8 @@
 #include "lexer.h"
 #include "trie.h"
 #include "util.h"
+#include "pred.h"
+
 
 #include <exception>
 #include <stdexcept>
@@ -18,6 +20,10 @@ int yyerror(Formula **fmla, yyscan_t scanner, const char *msg) {
 
 %code requires {
     typedef void *yyscan_t;
+    
+    #include <vector>
+    #include "dom.h"
+    #include "pred.h"
 }
 
 %output  "parser.cpp"
@@ -34,6 +40,8 @@ int yyerror(Formula **fmla, yyscan_t scanner, const char *msg) {
     interval in;
     Regex *regex;
     Formula *fmla;
+    Term *term;
+    std::vector<Term> *args;
 }
 
 %token TOKEN_FALSE "FALSE"
@@ -49,6 +57,7 @@ int yyerror(Formula **fmla, yyscan_t scanner, const char *msg) {
 %token TOKEN_EVENTUALLY "EVENTUALLY"
 %token TOKEN_PAST_ALWAYS "PAST_ALWAYS"
 %token TOKEN_ALWAYS "ALWAYS"
+%token TOKEN_EXISTS "EXISTS"
 %token TOKEN_BACKWARD "BACKWARD"
 %token TOKEN_FORWARD "FORWARD"
 %token TOKEN_QUESTION "QUESTION"
@@ -70,6 +79,8 @@ int yyerror(Formula **fmla, yyscan_t scanner, const char *msg) {
 %type <in> interval
 %type <regex> regex
 %type <fmla> formula
+%type <term> term                         // Added since last meeting
+%type <args> args                         // Added since last meeting
 
 %nonassoc "BACKWARD" "FORWARD"
 
@@ -119,6 +130,18 @@ regex
     | regex[r] "STAR"                                   { $$ = new StarRegex($r); }
     | "OPEN" regex[r] "CLOSE"                           { $$ = $r; }
     ;
+
+term
+    : "ATOM"                                            { $$ = new Term(Term::Var($1)); }
+    | number[n]                                         { $$ = new Term(Term::Const(Dom::Int($n))); }
+    ;
+
+args
+    : %empty                                            { $$ = new std::vector<Term>(); }
+    | term[t]                                           { $$ = new std::vector<Term>(); $$->push_back(*$t); delete $t; }
+    | term[t] "SEP" args[a]                             { $a->insert($a->begin(), *$t); delete $t; $$ = $a; }
+    ;
+
 
 formula
     : "FALSE"                                           { $$ = new BoolFormula(false); }
