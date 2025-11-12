@@ -5,9 +5,12 @@
 #include "common.h"
 #include "DFA.h"
 #include "util.h"
+#include "pred.h"
+
 
 #include <cassert>
 #include <cstdlib>
+#include <vector>
 
 struct Regex;
 struct LookaheadRegex;
@@ -274,9 +277,10 @@ struct BoolFormula : Formula {
 struct AtomFormula : Formula {
     const char *pred_name;
     int pred;
+    std::vector<Term> *args;
     int pred_owner;
 
-    AtomFormula(const char *pred_name, int pred, int pred_owner = 0) : Formula(0), pred_name(pred_name), pred(pred), pred_owner(pred_owner) {}
+    AtomFormula(const char *pred_name, int pred, std::vector<Term> *args, int pred_owner = 0) : Formula(0), pred_name(pred_name), pred(pred), args(args), pred_owner(pred_owner) {}
     ~AtomFormula() {
         if (pred_owner) delete [] pred_name;
     }
@@ -294,6 +298,7 @@ struct AtomFormula : Formula {
         return pred == f->pred;
     }
 };
+
 
 struct NegFormula : Formula {
     Formula *f;

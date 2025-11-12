@@ -14,7 +14,7 @@ Formula *new_ap(int i) {
   assert(i < 100);
   char *name = new char[66];
   sprintf(name, "a%02d", i);
-  return new AtomFormula(name, i, 1);
+  return new AtomFormula(name, i, nullptr, 1);  // addeed nullptr
 }
 
 void print_ap(FILE *f, const char *sep, int i) {
@@ -27,7 +27,7 @@ void print_ap(FILE *f, const char *sep, int i) {
 
 Formula *new_eof() {
   static const char *name = "e";
-  return new AtomFormula(name, ap_cnt - 1);
+  return new AtomFormula(name, ap_cnt - 1, nullptr); // added nullptr
 }
 
 struct Log {

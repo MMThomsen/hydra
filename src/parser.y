@@ -146,7 +146,7 @@ args
 formula
     : "FALSE"                                           { $$ = new BoolFormula(false); }
     | "TRUE"                                            { $$ = new BoolFormula(true); }
-    | "ATOM"                                            { $$ = new AtomFormula($1, trie.getOrAdd($1), 1); }
+    | "ATOM"                                            { $$ = new AtomFormula($1, trie.getOrAdd($1), new std::vector<Term>(), 1); }
     | "NEG" formula[f]                                  { $$ = new NegFormula($f); }
     | formula[f] "CONJ" formula[g]                      { $$ = new AndFormula($f, $g); }
     | formula[f] "DISJ" formula[g]                      { $$ = new OrFormula($f, $g); }
