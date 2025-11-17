@@ -4,6 +4,7 @@
 #include "trie.h"
 #include "util.h"
 #include "dom.h" 
+#include "pred.h"
 
 #include <algorithm>
 #include <cassert>
