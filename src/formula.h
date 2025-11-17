@@ -31,6 +31,7 @@ struct SinceFormula;
 struct UntilFormula;
 struct BwFormula;
 struct FwFormula;
+struct ExistsFormula;  // Added
 
 class RegexVisitor {
 public:
@@ -54,6 +55,7 @@ public:
     virtual void visit(UntilFormula *f) = 0;
     virtual void visit(BwFormula *f) = 0;
     virtual void visit(FwFormula *f) = 0;
+    virtual void visit(ExistsFormula *f) = 0;  // Added
 };
 
 struct Regex {
@@ -253,6 +255,9 @@ struct Formula {
     virtual bool equalFw(const FwFormula *f) const {
         return false;
     }
+    virtual bool equalExists(const ExistsFormula *f) const {  // Added
+        return false;  // Added
+    }  // Added
 };
 
 struct BoolFormula : Formula {
@@ -277,12 +282,13 @@ struct BoolFormula : Formula {
 struct AtomFormula : Formula {
     const char *pred_name;
     int pred;
-    std::vector<Term> *args;
+    std::vector<Term> *args;                // Added
     int pred_owner;
 
     AtomFormula(const char *pred_name, int pred, std::vector<Term> *args, int pred_owner = 0) : Formula(0), pred_name(pred_name), pred(pred), args(args), pred_owner(pred_owner) {}
     ~AtomFormula() {
         if (pred_owner) delete [] pred_name;
+        if (args != NULL) delete args;      // Added
     }
     bool eval(const Event *e) const override {
         return e->evalAtom(pred_name, pred);
@@ -489,5 +495,17 @@ struct FwFormula : Formula {
         return r->equal(f->r) && from == f->from && to == f->to;
     }
 };
+
+struct ExistsFormula : Formula {  // Added
+    const char *pred_name;  // Added
+    Formula *f;  // Added
+    int var_owner;  // Added
+
+    ExistsFormula(const char *pred_name, Formula *f, int var_owner = 0)  // Added
+        : Formula(f->is_temporal), pred_name(pred_name), f(f), var_owner(var_owner) {}  // Added
+    
+    void accept(FormulaVisitor &v) override { v.visit(this); }  // Added
+    bool equal(const Formula *f) const override { return false; }  // Added
+};  // Added
 
 #endif /* __FORMULA_H__ */

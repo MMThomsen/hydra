@@ -70,8 +70,8 @@ class MapInputReader : public InputReader {
 
     int fsm(const char *line, size_t *pos) {
         TrieNode<int> *t = &trie->root;
-        size_t i = *pos;
-        while (i < f_size && line[i] != ' ' && line[i] != '\r' && line[i] != '\n') {
+        size_t i = *pos;                                                          // Added below -  Stop at '(' too                      
+        while (i < f_size && line[i] != ' ' && line[i] != '\r' && line[i] != '\n' && line[i] != '(') {  
             if (line[i] & 0x80) throw std::runtime_error("log file format");
             if (t->next[line[i]] == NULL) {
                 *pos = i;
@@ -128,6 +128,30 @@ public:
                    while(pos < f_size && mapped[pos] != ' ' && mapped[pos] != '\r' && mapped[pos] != '\n') pos++;
                } else {
                    e->ap_lookup[value] = 1;
+                   
+                   // Added - below - parse arguments 
+                   if (pos < f_size && mapped[pos] == '(') {
+                       pos++;
+                       
+                       while (pos < f_size && mapped[pos] != ')') {
+                           while (pos < f_size && mapped[pos] == ' ') pos++;
+                           
+                           while (pos < f_size && mapped[pos] != ',' && 
+                                  mapped[pos] != ')' && mapped[pos] != ' ') {
+                               pos++;  // Skipping arguments until we have figured out how to use the PDT.
+                           }
+                           
+                           while (pos < f_size && mapped[pos] == ' ') pos++;
+                           
+                           if (pos < f_size && mapped[pos] == ',') {
+                               pos++;
+                           }
+                       }
+                       
+                       if (pos < f_size && mapped[pos] == ')') {
+                           pos++;
+                       }
+                   }
                }
            }
         }

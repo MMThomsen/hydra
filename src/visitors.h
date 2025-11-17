@@ -83,6 +83,10 @@ public:
         std::pair<DFA *, MH_FW *> icalp = createMH<MH_FW>(f->r, input_reader);
         mon = new FwMonitor(f->from, f->to, icalp.first, icalp.second);
     }
+    void visit(ExistsFormula *f) {  // Added
+        // Placeholder 
+        f->f->accept(*this);  // Added
+    }  // Added
 };
 
 class CollectVisitor : public RegexVisitor {
@@ -276,6 +280,9 @@ public:
         AtomRegexVisitor v(atoms);
         f->r->accept(v);
     }
+    void visit(ExistsFormula *f) {  // Added
+        f->f->accept(*this);  // Added
+    }  // Added
 };
 
 class PrintRegexVisitor : public RegexVisitor {
@@ -391,6 +398,11 @@ public:
         f->r->accept(v);
         fprintf(out, ")");
     }
+    void visit(ExistsFormula *f) {  // Added
+        fprintf(out, "(EXISTS %s. ", f->pred_name);  // Added
+        f->f->accept(*this);  // Added
+        fprintf(out, ")");  // Added
+    }  // Added
 };
 
 class PrintReelayFormulaVisitor : public FormulaVisitor {
@@ -451,6 +463,9 @@ public:
     void visit(FwFormula *f) {
         CHECK(0);
     }
+    void visit(ExistsFormula *f) {  // Added
+        CHECK(0);  // Added 
+    }  // Added
 };
 
 void print_fmla_hydra(const char *fname, Formula *fmla);
