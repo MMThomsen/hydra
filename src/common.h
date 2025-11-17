@@ -3,6 +3,7 @@
 
 #include "trie.h"
 #include "util.h"
+#include "dom.h" 
 
 #include <algorithm>
 #include <cassert>
@@ -28,9 +29,12 @@ struct Event {
 
     int c;
     int ap_cnt;
-    vector<int> ap_lookup;
+    vector<vector<vector<Dom>>> ap_lookup;  // [pred_id][tuple_index][arg_position]
 
-    Event(int ap_cnt = 0) : pos(0), ts(0), tp(-1), eof(0), c(-1), ap_cnt(ap_cnt), ap_lookup(ap_cnt) {}
+    //Event(int ap_cnt = 0) : pos(0), ts(0), tp(-1), eof(0), c(-1), ap_cnt(ap_cnt), ap_lookup(ap_cnt) {}
+    Event(int ap_cnt = 0) : pos(0), ts(0), tp(-1), eof(0), c(-1), ap_cnt(ap_cnt) {
+    ap_lookup.resize(ap_cnt);
+    }
     Event(const Event *e) : pos(e->pos), ts(e->ts), tp(e->tp), eof(e->eof), c(e->c), ap_cnt(e->ap_cnt), ap_lookup(e->ap_lookup) {}
     bool operator<(const Event &e) const {
         return c < e.c || (c == e.c && ap_lookup < e.ap_lookup);
@@ -40,12 +44,12 @@ struct Event {
     }
     int eval(int fid) const {
         CHECK(0 <= fid && fid < ap_cnt);
-        return ap_lookup[fid];
-    }
-    int evalAtom(const char *pred_name, int pred) const {
+        return !ap_lookup[fid].empty() ? 1 : 0;
+    }                                           // also args
+    int evalAtom(const char *pred_name, int pred) const { // It is here that we can use tabulate function to create part -> pdt
         if (c == -1) {
             CHECK(0 <= pred && pred < ap_cnt);
-            return ap_lookup[pred];
+            return !ap_lookup[pred].empty() ? 1 : 0;
         } else {
             return c == pred_name[0];
         }
@@ -70,7 +74,7 @@ class MapInputReader : public InputReader {
 
     int fsm(const char *line, size_t *pos) {
         TrieNode<int> *t = &trie->root;
-        size_t i = *pos;                                                          // Added below -  Stop at '(' too                      
+        size_t i = *pos;                                                          // Added below -  Stop at '(' too    
         while (i < f_size && line[i] != ' ' && line[i] != '\r' && line[i] != '\n' && line[i] != '(') {  
             if (line[i] & 0x80) throw std::runtime_error("log file format");
             if (t->next[line[i]] == NULL) {
@@ -118,28 +122,63 @@ public:
         if (parseNumber(mapped, &pos, &ts)) throw std::runtime_error("timestamp");
         e->ts = ts;
         e->tp++;
-        for (int i = 0; i < e->ap_cnt; i++) e->ap_lookup[i] = 0;
+        //for (int i = 0; i < e->ap_cnt; i++) e->ap_lookup[i] = 0;
+        for (int i = 0; i < e->ap_cnt; i++) {
+            e->ap_lookup[i].clear();  // Clear tuple list for each predicate
+        }
         while (pos < f_size && mapped[pos] != '\r' && mapped[pos] != '\n') {
-           if (mapped[pos] == ' ') {
-               pos++;
-           } else {
-               int value = fsm(mapped, &pos);
-               if (value == -1) {
-                   while(pos < f_size && mapped[pos] != ' ' && mapped[pos] != '\r' && mapped[pos] != '\n') pos++;
-               } else {
-                   e->ap_lookup[value] = 1;
-                   
-                   // Added - below - parse arguments 
-                   if (pos < f_size && mapped[pos] == '(') {
-                       pos++;
-                       
-                       while (pos < f_size && mapped[pos] != ')') {
-                           while (pos < f_size && mapped[pos] == ' ') pos++;
+            if (mapped[pos] == ' ') {
+                pos++;
+            } else {
+                int value = fsm(mapped, &pos);
+                if (value == -1) {
+                    while(pos < f_size && mapped[pos] != ' ' && mapped[pos] != '\r' && mapped[pos] != '\n') pos++;
+                } else {
+                    //e->ap_lookup[value] = 1;           Change Structure to store tuples
+                    vector<Dom> tuple_args;              // Arguments for this tuple
+
+                    // Added - parse arguments 
+                    if (pos < f_size && mapped[pos] == '(') {
+                        pos++;
+
+                        while (pos < f_size && mapped[pos] != ')') {
+                            while (pos < f_size && mapped[pos] == ' ') pos++;
                            
-                           while (pos < f_size && mapped[pos] != ',' && 
-                                  mapped[pos] != ')' && mapped[pos] != ' ') {
-                               pos++;  // Skipping arguments until we have figured out how to use the PDT.
-                           }
+                            // Capture argument value
+                            size_t arg_start = pos;
+                            while (pos < f_size && mapped[pos] != ',' && 
+                                    mapped[pos] != ')' && mapped[pos] != ' ') {
+                                pos++;
+                            }
+
+                            if (pos > arg_start) {
+                                // Extract argument string
+                                string arg_str(mapped + arg_start, pos - arg_start);
+                                
+                                // Try to parse as integer, then float, else string
+                                try {
+                                    size_t idx;
+                                    int int_val = std::stoi(arg_str, &idx);
+                                    if (idx == arg_str.length()) {
+                                        tuple_args.push_back(Dom::Int(int_val));
+                                    } else {
+                                        throw std::invalid_argument("not an int");
+                                    }
+                                } catch (...) {
+                                    try {
+                                        size_t idx;
+                                        double float_val = std::stod(arg_str, &idx);
+                                        if (idx == arg_str.length()) {
+                                            tuple_args.push_back(Dom::Float(float_val));
+                                        } else {
+                                            throw std::invalid_argument("not a float");
+                                        }
+                                    } catch (...) {
+                                        // Default to string
+                                        tuple_args.push_back(Dom::Str(arg_str));
+                                    }
+                                }
+                            }                          
                            
                            while (pos < f_size && mapped[pos] == ' ') pos++;
                            
@@ -151,7 +190,10 @@ public:
                        if (pos < f_size && mapped[pos] == ')') {
                            pos++;
                        }
-                   }
+                   } 
+                   
+                   // Store the tuple for this predicate
+                   e->ap_lookup[value].push_back(tuple_args);
                }
            }
         }

@@ -291,7 +291,7 @@ struct AtomFormula : Formula {
         if (args != NULL) delete args;      // Added
     }
     bool eval(const Event *e) const override {
-        return e->evalAtom(pred_name, pred);
+        return e->evalAtom(pred_name, pred, args); // added args
     }
     void accept(FormulaVisitor &v) override {
         v.visit(this);
