@@ -1,6 +1,7 @@
 #include "pred.h"
 #include <sstream>
 #include <iostream>
+#include <optional>
 
 
 // ===== Term =====
@@ -89,6 +90,43 @@ std::string Term::list_to_json_string(const std::vector<Term>& trms) {
         }
     }
     return oss.str();
+}
+
+std::optional<std::unordered_map<std::string, Dom>> Term::match_terms(const std::vector<Term>& trms, 
+                                                                        const std::vector<Dom>& ds,
+                                                                        const std::unordered_map<std::string, Dom>& map) {
+    if (trms.empty() && ds.empty()) return map;
+    
+    if (trms.size() != ds.size()) return std::nullopt;
+    
+    const Term& t = trms[0];
+    const Dom& d = ds[0];
+    
+    std::vector<Term> trms_tail(trms.begin() + 1, trms.end());
+    std::vector<Dom> ds_tail(ds.begin() + 1, ds.end());
+    
+    if (isConst(t)) {
+        Dom c = unconst(t);
+        if (Dom::equal(c, d)) {
+            return match_terms(trms_tail, ds_tail, map);
+        }
+        return std::nullopt;
+    }
+    
+    std::string x = unvar(t);
+    auto map_opt = match_terms(trms_tail, ds_tail, map);
+    if (!map_opt.has_value()) return std::nullopt;
+    
+    auto map_prime = map_opt.value();
+    auto it = map_prime.find(x);
+    
+    if (it == map_prime.end()) {
+        map_prime[x] = d;
+        return map_prime;
+    }
+
+    if (Dom::equal(d, it->second)) return map_prime;
+    return std::nullopt;
 }
 
 // ===== Sig =====

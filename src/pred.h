@@ -10,6 +10,7 @@
 #include <utility>
 #include <ostream>
 #include <stdexcept>
+#include <optional>
 
 
 struct Term {
@@ -43,6 +44,11 @@ struct Term {
     static std::string  value_to_string(const Term& t);
     static std::string  list_to_string(const std::vector<Term>& trms);
     static std::string  list_to_json_string(const std::vector<Term>& trms);
+
+
+    static std::optional<std::unordered_map<std::string, Dom>> match_terms(const std::vector<Term>& trms, 
+                                                                           const std::vector<Dom>& ds,
+                                                                           const std::unordered_map<std::string, Dom>& map);
 
     //#############################CHECK#################################//
 

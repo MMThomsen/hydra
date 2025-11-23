@@ -1710,6 +1710,105 @@ struct Pdt {
 
     /*
     #####################################################################
+                                Construction Functions
+    #####################################################################    
+    */
+
+    /*################################ pdt_of ################################
+    
+    OCaml reference:
+      let rec pdt_of tp r trms (vars: string list) maps : Expl.t = match vars with
+        | [] -> if List.is_empty maps then Leaf (V (VPred (tp, r, trms)))
+                else Leaf (S (SPred (tp, r, trms)))
+        | x :: vars ->
+           let ds = List.fold maps ~init:[]
+                      ~f:(fun acc map -> match Map.find map x with
+                                         | None -> acc
+                                         | Some(d) -> d :: acc) in
+           let find_maps d = List.fold maps ~init:[]
+                               ~f:(fun acc map -> match Map.find map x with
+                                                  | None -> acc
+                                                  | Some(d') -> if Dom.equal d d' then
+                                                                  map :: acc
+                                                                else acc) in
+           let part = Part.tabulate_dedup (Pdt.equal Proof.equal) (Set.of_list (module Dom) ds)
+                        (fun d -> pdt_of tp r trms vars (find_maps d)) 
+                        (pdt_of tp r trms vars []) in
+           Node (x, part)
+    */
+    static PdtT<int> pdt_of(const std::vector<std::string>& vars,
+                            const std::vector<std::unordered_map<std::string, Dom>>& maps) {
+        // Base case: no variables left
+        // OCaml: | [] -> if List.is_empty maps then Leaf (V ...) else Leaf (S ...)
+        if (vars.empty()) {
+            if (maps.empty()) {
+                return Leaf<int>(0);  // No matches found
+            } else {
+                return Leaf<int>(1);  // Matches found
+            }
+        }
+
+        // Recursive case: split first variable
+        // OCaml: | x :: vars ->
+        const std::string& x = vars.front();
+        std::vector<std::string> vars_tail(vars.begin() + 1, vars.end());
+
+        // Collect all domain values for variable x across all maps
+        // OCaml: let ds = List.fold maps ~init:[] ~f:(fun acc map -> match Map.find map x with ...)
+        // Then: Set.of_list (module Dom) ds
+        Setc::SetT ds;  // Using Setc::SetT (std::set<Dom>) for automatic deduplication
+        for (const auto& map : maps) {
+            auto it = map.find(x);
+            if (it != map.end()) {
+                ds.insert(it->second);
+            }
+        }
+
+        // Define find_maps function: filter maps where map[x] == d
+        // OCaml: let find_maps d = List.fold maps ~init:[] ~f:(fun acc map -> ...)
+        auto find_maps = [&](const Dom& d) -> std::vector<std::unordered_map<std::string, Dom>> {
+            std::vector<std::unordered_map<std::string, Dom>> filtered;
+            for (const auto& map : maps) {
+                auto it = map.find(x);
+                if (it != map.end() && Dom::equal(it->second, d)) {
+                    filtered.push_back(map);
+                }
+            }
+            return filtered;
+        };
+
+        // Tabulate function: for each domain value d, recursively build PDT
+        // OCaml: (fun d -> pdt_of tp r trms vars (find_maps d))
+        auto tabulate_func = [&](const Dom& d) -> PdtT<int> {
+            return pdt_of(vars_tail, find_maps(d));
+        };
+
+        // Zero case: PDT when no maps (empty assignment list)
+        // OCaml: (pdt_of tp r trms vars [])
+        PdtT<int> zero_pdt = pdt_of(vars_tail, {});
+
+        // Build partition using tabulate_dedup
+        // OCaml: Part.tabulate_dedup (Pdt.equal Proof.equal) (Set.of_list (module Dom) ds) ...
+        auto pdt_eq = [](const PdtT<int>& a, const PdtT<int>& b) -> bool {
+            auto int_eq = [](int x, int y) -> bool { return x == y; };
+            return Pdt::equal(int_eq, a, b);
+        };
+
+        auto partition = Part::tabulate_dedup<PdtT<int>>(
+            pdt_eq,
+            ds,
+            tabulate_func,
+            zero_pdt
+        );
+
+        // Return node with variable name and partition
+        // OCaml: Node (x, part)
+        return Node<int>(x, partition);
+    }
+
+
+    /*
+    #####################################################################
                                 Auxiliary Function
     #####################################################################    
     */

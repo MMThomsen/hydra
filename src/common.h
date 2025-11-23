@@ -5,6 +5,7 @@
 #include "util.h"
 #include "dom.h" 
 #include "pred.h"
+#include "pdt.h"
 
 #include <algorithm>
 #include <cassert>
@@ -46,10 +47,74 @@ struct Event {
     int eval(int fid) const {
         CHECK(0 <= fid && fid < ap_cnt);
         return !ap_lookup[fid].empty() ? 1 : 0;
-    }                                           // also args
-    int evalAtom(const char *pred_name, int pred) const { // It is here that we can use tabulate function to create part -> pdt
+    }  
+    int evalAtom(const char *pred_name, int pred, const std::vector<Term> *args) const {
         if (c == -1) {
             CHECK(0 <= pred && pred < ap_cnt);
+            
+            if (args == nullptr) {
+                return !ap_lookup[pred].empty() ? 1 : 0;
+            }
+            
+            std::vector<std::string> vars;
+            for (const auto& term : *args) {
+                if (Term::isVar(term)) {
+                    vars.push_back(Term::unvar(term));
+                }
+            }
+            
+            std::vector<std::unordered_map<std::string, Dom>> maps;
+            
+            for (const auto& tuple : ap_lookup[pred]) {
+                std::unordered_map<std::string, Dom> empty_map;
+                auto result = Term::match_terms(*args, tuple, empty_map);
+                if (result.has_value()) {
+                    maps.push_back(result.value());
+                }
+            }
+            
+            
+            if (!vars.empty()) {
+                auto pdt = Pdt::pdt_of(vars, maps);
+                
+                // From pdt_test.cpp (old file) - Written by AI
+                std::cout << "\n=== PDT for predicate " << pred << " ===\n";
+                std::cout << "Pred: " << pred_name << "\n";
+                std::cout << "vars: [";
+                for (size_t i = 0; i < vars.size(); ++i) {
+                    if (i > 0) std::cout << ", ";
+                    std::cout << vars[i];
+                }
+                std::cout << "]\n";
+                std::cout << "maps count: " << maps.size() << "\n";
+                std::cout << "PDT structure:\n";
+                
+                std::function<void(const Pdt::PdtT<int>&, const std::string&, int)> print_pdt;
+                print_pdt = [&](const Pdt::PdtT<int>& p, const std::string& indent, int depth) {
+                    if (Pdt::isleaf(p)) {
+                        std::cout << indent << "Leaf(" << Pdt::unleaf(p) << ")\n";
+                    } else if (Pdt::isnode(p)) {
+                        std::cout << indent << "Node(\"" << Pdt::var(p) << "\", [\n";
+                        const auto& part = Pdt::part(p);
+                        for (size_t i = 0; i < part.size(); ++i) {
+                            const auto& [sub, sub_pdt] = part[i];
+                            std::cout << indent << "  (" << Setc::to_string(sub) << ",\n";
+                            print_pdt(sub_pdt, indent + "    ", depth + 1);
+                            std::cout << indent << "  )";
+                            if (i < part.size() - 1) std::cout << ",";
+                            std::cout << "\n";
+                        }
+                        std::cout << indent << "])\n";
+                    }
+                };
+                
+                print_pdt(pdt, "  ", 0);
+                std::cout << "=== End PDT ===\n";
+                
+                // TODO: use pdt for evaluation 
+                // ASK Dmitriy: (Might make a seperate callable element in Event for the PDT)
+            }
+            
             return !ap_lookup[pred].empty() ? 1 : 0;
         } else {
             return c == pred_name[0];
@@ -135,17 +200,19 @@ public:
                 if (value == -1) {
                     while(pos < f_size && mapped[pos] != ' ' && mapped[pos] != '\r' && mapped[pos] != '\n') pos++;
                 } else {
+                    // Original below:
                     //e->ap_lookup[value] = 1;           Change Structure to store tuples
-                    vector<Dom> tuple_args;              // Arguments for this tuple
+                    // New below
+                    vector<Dom> tuple_args; 
 
-                    // Added - parse arguments 
+                    // Parse Args
                     if (pos < f_size && mapped[pos] == '(') {
                         pos++;
 
                         while (pos < f_size && mapped[pos] != ')') {
                             while (pos < f_size && mapped[pos] == ' ') pos++;
                            
-                            // Capture argument value
+                            // arg vals
                             size_t arg_start = pos;
                             while (pos < f_size && mapped[pos] != ',' && 
                                     mapped[pos] != ')' && mapped[pos] != ' ') {
@@ -156,7 +223,6 @@ public:
                                 // Extract argument string
                                 string arg_str(mapped + arg_start, pos - arg_start);
                                 
-                                // Try to parse as integer, then float, else string
                                 try {
                                     size_t idx;
                                     int int_val = std::stoi(arg_str, &idx);
@@ -175,7 +241,6 @@ public:
                                             throw std::invalid_argument("not a float");
                                         }
                                     } catch (...) {
-                                        // Default to string
                                         tuple_args.push_back(Dom::Str(arg_str));
                                     }
                                 }
