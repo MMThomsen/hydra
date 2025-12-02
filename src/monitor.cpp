@@ -15,10 +15,10 @@ Monitor *NonTempMonitor::clone() {
     mon->eof = eof;
     return mon;
 }
-BooleanVerdict NonTempMonitor::step_impl() {
+BooleanVerdict NonTempMonitor::step_impl(const std::vector<std::string>& vars) {
     input_reader->read_handle(handle);
     if (handle->eof) throw EOL();
-    bool b = fmla->eval(handle);
+    bool b = fmla->eval(handle, vars);
     return BooleanVerdict(handle->ts, b ? TRUE : FALSE);
 }
 
@@ -28,7 +28,7 @@ Monitor *PrevMonitor::clone() {
     mon->v = v;
     return mon;
 }
-BooleanVerdict PrevMonitor::step_impl() {
+BooleanVerdict PrevMonitor::step_impl(const std::vector<std::string>& vars) {
     input_reader->read_handle(handle);
     if (handle->eof) throw EOL();
     Boolean b = FALSE;
@@ -36,7 +36,7 @@ BooleanVerdict PrevMonitor::step_impl() {
         if (mem(v->ts, handle->ts, from, to)) b = v->b;
     }
     try {
-        v = subf->step();
+        v = subf->step(vars);
     } catch (const EOL &e) {
         eof = 1;
     }
@@ -49,14 +49,14 @@ Monitor *NextMonitor::clone() {
     mon->t = t;
     return mon;
 }
-BooleanVerdict NextMonitor::step_impl() {
+BooleanVerdict NextMonitor::step_impl(const std::vector<std::string>& vars) {
     input_reader->read_handle(handle);
     if (handle->eof) throw EOL();
     if (t) {
         timestamp t0 = *t;
         t = handle->ts;
         try {
-            BooleanVerdict v = subf->step();
+            BooleanVerdict v = subf->step(vars);
             Boolean b = FALSE;
             if (mem(t0, handle->ts, from, to)) b = v.b;
             return BooleanVerdict(t0, b);
@@ -69,9 +69,9 @@ BooleanVerdict NextMonitor::step_impl() {
             }
         }
     } else {
-        subf->step();
+        subf->step(vars);
         t = handle->ts;
-        return step_impl();
+        return step_impl(vars);
     }
 }
 
@@ -84,15 +84,15 @@ Monitor *SinceMonitor::clone() {
     mon->otpsi = otpsi;
     return mon;
 }
-BooleanVerdict SinceMonitor::step_impl() {
-    BooleanVerdict vf = subf->step();
+BooleanVerdict SinceMonitor::step_impl(const std::vector<std::string>& vars) {
+    BooleanVerdict vf = subf->step(vars);
     if (vf.b == TRUE) cphi++;
     else cphi = 0;
     cpsi++;
     if (ocpsi) (*ocpsi)++;
     while (cpsi > 0 && memL(handle->ts, vf.ts, from, to)) {
         input_reader->read_handle(handle);
-        BooleanVerdict vg = subg->step();
+        BooleanVerdict vg = subg->step(vars);
         if (vg.b == TRUE) {
             ocpsi = cpsi;
             otpsi = vg.ts;
@@ -111,12 +111,12 @@ Monitor *UntilMonitor::clone() {
     mon->z = z;
     return mon;
 }
-BooleanVerdict UntilMonitor::step_impl() {
+BooleanVerdict UntilMonitor::step_impl(const std::vector<std::string>& vars) {
     input_reader->read_handle(back);
     if (back->eof) throw EOL();
     while (loopCondUntil()) {
-        BooleanVerdict vf = subf->step();
-        BooleanVerdict vg = subg->step();
+        BooleanVerdict vf = subf->step(vars);
+        BooleanVerdict vg = subg->step(vars);
         input_reader->read_handle(front);
         c++;
         z = make_pair(vf.ts, make_pair(vf.b, vg.b));
@@ -136,7 +136,7 @@ Monitor *BwMonitor::clone() {
     mon->eof = eof;
     return mon;
 }
-BooleanVerdict BwMonitor::step_impl() {
+BooleanVerdict BwMonitor::step_impl(const std::vector<std::string>& vars) {
     return s->check_bw(from, to);
 }
 
@@ -145,6 +145,6 @@ Monitor *FwMonitor::clone() {
     mon->eof = eof;
     return mon;
 }
-BooleanVerdict FwMonitor::step_impl() {
+BooleanVerdict FwMonitor::step_impl(const std::vector<std::string>& vars) {
     return s->check_fw(from, to);
 }

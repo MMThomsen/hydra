@@ -18,17 +18,16 @@ RUN opam install -y ocamlbuild ocamlfind ctypes dune dune-build-info safa menhir
 ENV WDIR /home/hydra
 WORKDIR ${WDIR}
 
-# Aerial
+# Aerial (not needed for Hydra only)
 RUN git clone https://bitbucket.org/traytel/aerial.git
-# Replace all Pervasives.compare calls with Stdlib.compare across Aerial sources
 RUN find aerial/src -type f -name "*.ml*" -exec sed -i 's/Pervasives.compare/Stdlib.compare/g' {} +
 RUN eval `opam config env`; make -C aerial
 
-# MonPoly/VeriMon
+# MonPoly/VeriMon (not needed for Hydra only)
 RUN git clone https://bitbucket.org/jshs/monpoly.git
 RUN eval `opam config env`; cd monpoly; dune build --release
 
-# Reelay
+# Reelay (not needed for Hydra only)
 RUN git clone https://github.com/mraszyk/reelay-codegen.git
 RUN cd reelay-codegen; python3 setup.py build; cp scripts/reelay reelay.py
 

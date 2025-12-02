@@ -22,19 +22,19 @@ public:
 
     virtual ~Monitor() {}
     virtual Monitor *clone() = 0;
-    BooleanVerdict step() {
+    BooleanVerdict step(const std::vector<std::string>& vars) { //should be pdt<bool> verdict
         if (eof) {
             throw EOL();
         } else {
             try {
-                return step_impl();
+                return step_impl(vars);
             } catch (const EOL &e) {
                 eof = true;
                 throw EOL();
             }
         }
     }
-    virtual BooleanVerdict step_impl() = 0;
+    virtual BooleanVerdict step_impl(const std::vector<std::string>& vars) = 0;
 };
 
 class EvalMonitor : public Monitor {
@@ -47,8 +47,8 @@ public:
     Monitor *clone() override {
         return new EvalMonitor(fmla, input_reader, handle->clone());
     }
-    BooleanVerdict step_impl() override {
-        bool b = fmla->eval(handle);
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override {
+        bool b = fmla->eval(handle, vars); //returns pdt<int> -> convert to pdt<Boolean>
         return BooleanVerdict(handle->ts, b ? TRUE : FALSE);
     }
 };
@@ -61,7 +61,7 @@ class LastReader {
 
 public:
     int eof;
-    std::vector<vector<int> > sub_es;
+    std::vector<vector<int> > sub_es; //should become a vector of pdt<int>
 
     size_t buf_len, buf_len_mask;
     size_t buf_beg, buf_end;
@@ -86,14 +86,14 @@ public:
         for (size_t i = 0; i < sub_mon.size(); i++) delete sub_mon[i];
     }
 
-    void run() {
+    void run(const std::vector<std::string>& vars) {
         if (eof) return;
         input_reader->read_handle(handle);
         size_t buf_end_mod = buf_end & buf_len_mask;
         try {
           for (size_t i = 0; i < fmla.size(); i++) {
-              BooleanVerdict v = sub_mon[i]->step();
-              sub_es[buf_end_mod][i] = (v.b == TRUE);
+              BooleanVerdict v = sub_mon[i]->step(vars);
+              sub_es[buf_end_mod][i] = (v.b == TRUE); // Should be able to remove the == (maybe)
           }
           buf_end++;
         } catch (const EOL &e) {
@@ -108,6 +108,7 @@ protected:
     InputReader *input_reader;
     Event *b_head, *f_head;
     LastReader *b_reader, *f_reader;
+    std::vector<std::string> vars;
 
     // auxiliary storage
     // invariant: seen[i] == -1 for all i
@@ -137,12 +138,12 @@ protected:
     void rescale_seen() {
         seen.resize(dfa->get_cnt(), -1);
     }
-    vector<int> back_es() {
+    vector<int> back_es() { // type should be changed to vector<pdt<<Int>>>
         CHECK(b_reader->buf_beg != b_reader->buf_end || b_reader->eof);
         if (b_reader->buf_beg == b_reader->buf_end) throw EOL();
         return b_reader->sub_es[b_reader->buf_beg & b_reader->buf_len_mask];
     }
-    vector<int> front_es() {
+    vector<int> front_es() { // type should be changed to vector<pdt<<Int>>>
         if (f_reader == NULL) {
           if (b_reader->eof) throw EOL();
           return b_reader->sub_es[(b_reader->buf_end - 1) & b_reader->buf_len_mask];
@@ -151,26 +152,26 @@ protected:
           return f_reader->sub_es[(f_reader->buf_end - 1) & f_reader->buf_len_mask];
         }
     }
-    void run_ms_front() {
+    void run_ms_front(const std::vector<std::string>& vars) {
         if (b_reader->buf_end - b_reader->buf_beg < (1 << b_reader->buf_len)) {
             CHECK(b_reader->buf_end - 1 == front_tp);
-            b_reader->run();
+            b_reader->run(vars);
         } else if (f_reader == NULL) {
             CHECK(b_reader->buf_end - 1 == front_tp);
             f_reader = new LastReader(b_reader);
         }
         if (f_reader != NULL) {
-            f_reader->run();
+            f_reader->run(vars);
         }
     }
-    void run_ms_back() {
+    void run_ms_back(const std::vector<std::string>& vars) {
         b_reader->buf_beg++;
         if (b_reader->buf_end - 1 < front_tp) {
-            b_reader->run();
+            b_reader->run(vars);
         }
     }
 
-    MH_FW(MH_FW *s) : dfa(s->dfa), input_reader(s->input_reader), b_head(s->b_head->clone()), f_head(s->f_head->clone()), b_reader(new LastReader(s->b_reader)), seen(s->seen), q_map(s->q_map), q_map_init(s->q_map_init) {
+    MH_FW(MH_FW *s) : dfa(s->dfa), input_reader(s->input_reader), b_head(s->b_head->clone()), f_head(s->f_head->clone()), b_reader(new LastReader(s->b_reader)), seen(s->seen), q_map(s->q_map), q_map_init(s->q_map_init), vars(s->vars) {
         if (s->f_reader != NULL) f_reader = new LastReader(s->f_reader);
         else f_reader = NULL;
 
@@ -179,13 +180,13 @@ protected:
     }
 
 public:
-    MH_FW(DFA *dfa, InputReader *input_reader, LastReader *l_reader) : dfa(dfa), input_reader(input_reader), b_reader(l_reader) {
+    MH_FW(DFA *dfa, InputReader *input_reader, LastReader *l_reader, const std::vector<std::string>& vars) : dfa(dfa), input_reader(input_reader), b_reader(l_reader), vars(vars) { 
         b_head = input_reader->open_handle();
         input_reader->read_handle(b_head);
         f_head = input_reader->open_handle();
         input_reader->read_handle(f_head);
 
-        b_reader->run();
+        b_reader->run(vars);
         f_reader = NULL;
 
         q_map.push_back(std::make_pair(dfa->empty, QMapEntry(std::nullopt, dfa->empty)));
@@ -201,7 +202,7 @@ public:
     virtual MH_FW *clone() {
         return new MH_FW(this);
     }
-    BooleanVerdict check_fw(timestamp from, timestamp to) {
+    BooleanVerdict check_fw(timestamp from, timestamp to) { //
         if (b_head->eof) throw EOL();
         timestamp t = b_head->ts;
         while (!f_head->eof && memR(t, f_head->ts, from, to)) {
@@ -219,7 +220,7 @@ public:
         timestamp tj = f_head->ts;
         input_reader->read_handle(f_head);
         vector<int> bj = front_es();
-        run_ms_front();
+        run_ms_front(vars);
 
         for (size_t i = 0; i < q_map.size(); i++) {
             QMapEntry *e = &q_map[i].second;
@@ -234,7 +235,7 @@ public:
         input_reader->read_handle(b_head);
 
         const vector<int> bi = back_es();
-        run_ms_back();
+        run_ms_back(vars);
 
         for (size_t i = 0; i < q_map.size(); i++) {
             q_map[i].first = dfa->run(q_map[i].first, bi);
@@ -304,7 +305,7 @@ public:
                 b_cur = c_reader->sub_es[cur_tp & c_reader->buf_len_mask];
             }
             if (c_reader != NULL) {
-              c_reader->run();
+              c_reader->run(vars);
             }
 
             cur.q = dfa->run(cur.q, b_cur);
@@ -341,7 +342,7 @@ class MH_BW : public MH_FW {
     MH_BW(MH_BW *s) : MH_FW(s), e_map(s->e_map) {}
 
 public:
-    MH_BW(DFA *dfa, InputReader *input_reader, LastReader *l_reader) : MH_FW(dfa, input_reader, l_reader) {}
+    MH_BW(DFA *dfa, InputReader *input_reader, LastReader *l_reader, const std::vector<std::string>& vars) : MH_FW(dfa, input_reader, l_reader, vars) {}
     virtual MH_BW *clone() override {
         return new MH_BW(this);
     }
@@ -412,7 +413,7 @@ public:
         delete s;
     }
     Monitor *clone() override;
-    BooleanVerdict step_impl() override;
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override;
 };
 
 class FwMonitor : public Monitor {
@@ -429,7 +430,7 @@ public:
         delete s;
     }
     Monitor *clone() override;
-    BooleanVerdict step_impl() override;
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override;
 };
 
 class NonTempMonitor : public Monitor {
@@ -445,7 +446,7 @@ public:
         delete handle;
     }
     Monitor *clone() override;
-    BooleanVerdict step_impl() override;
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override;
 };
 
 class NegMonitor : public Monitor {
@@ -459,8 +460,8 @@ public:
     Monitor *clone() override {
         return new NegMonitor(subf->clone());
     }
-    BooleanVerdict step_impl() override {
-        return !subf->step();
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override {
+        return !subf->step(vars);
     }
 };
 
@@ -476,8 +477,8 @@ public:
     Monitor *clone() override {
         return new AndMonitor(subf->clone(), subg->clone());
     }
-    BooleanVerdict step_impl() override {
-        return subf->step() && subg->step();
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override {
+        return subf->step(vars) && subg->step(vars);
     }
 };
 
@@ -493,8 +494,8 @@ public:
     Monitor *clone() override {
         return new OrMonitor(subf->clone(), subg->clone());
     }
-    BooleanVerdict step_impl() override {
-        return subf->step() || subg->step();
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override {
+        return subf->step(vars) || subg->step(vars);
     }
 };
 
@@ -512,7 +513,7 @@ public:
         delete handle;
     }
     Monitor *clone() override;
-    BooleanVerdict step_impl() override;
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override;
 };
 
 class NextMonitor : public Monitor {
@@ -529,7 +530,7 @@ public:
         delete handle;
     }
     Monitor *clone() override;
-    BooleanVerdict step_impl() override;
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override;
 };
 
 class SinceMonitor : public Monitor {
@@ -553,7 +554,7 @@ public:
         delete handle;
     }
     Monitor *clone() override;
-    BooleanVerdict step_impl() override;
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override;
 };
 
 class UntilMonitor : public Monitor {
@@ -586,7 +587,7 @@ public:
         delete back;
     }
     Monitor *clone() override;
-    BooleanVerdict step_impl() override;
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override;
 };
 
 #endif /* __MONITOR_H__ */

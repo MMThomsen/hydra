@@ -95,13 +95,16 @@ int main(int argc, char **argv)
     if (grep) input_reader = new GrepInputReader(argv[2]);
     else input_reader = new MapInputReader(argv[2], &trie);
 
-    MonitorVisitor mv(input_reader);
+    // Compute the free variables (probably recursive function over the formula fmla) Similar to accept.
+    std::vector<std::string> free_vars = fmla->free_variables();
+    MonitorVisitor mv(input_reader, free_vars);
     fmla->accept(mv);
     Monitor *mon = mv.get_mon();
     TimePoint tp;
+    
     do {
         try {
-            BooleanVerdict v = mon->step();
+            BooleanVerdict v = mon->step(free_vars);         // include the free variables in mon->step() so it can be passed down.
             tp.update(v.ts);
             if (grep) {
                 if (v.b == TRUE) printf("%d\n", tp.tp);

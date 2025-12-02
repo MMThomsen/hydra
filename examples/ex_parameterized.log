@@ -1,0 +1,7 @@
+@0 p1(Alice,Bob) p2(item1)
+@0 p(Charlie,Dave) p2(item2)
+@1 p1(Eve,Frank)
+@4 p(George,Henry) p2(item3)
+@4 p1(Iris,Jack) p2(item4)
+@6 p(Kelly,Lee) p1(Mary,Nancy) p2(item5)
+@7 p1(Oscar,Paul)

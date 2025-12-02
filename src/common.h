@@ -32,23 +32,31 @@ struct Event {
     int c;
     int ap_cnt;
     vector<vector<vector<Dom>>> ap_lookup;  // [pred_id][tuple_index][arg_position]
+    vector<std::string> vars;               // Remove this from event, this should be handle through the mon->step() etc.
+    mutable vector<std::optional<Pdt::PdtT<int>>> pdt_list;  // DELETE LATER, JUST FOR TESTING
+    // var list [Var('x'), Var('y'), var('z')]
 
     //Event(int ap_cnt = 0) : pos(0), ts(0), tp(-1), eof(0), c(-1), ap_cnt(ap_cnt), ap_lookup(ap_cnt) {}
-    Event(int ap_cnt = 0) : pos(0), ts(0), tp(-1), eof(0), c(-1), ap_cnt(ap_cnt) {
-    ap_lookup.resize(ap_cnt);
+    Event(int ap_cnt, const std::vector<std::string> &vars) : pos(0), ts(0), tp(-1), eof(0), c(-1), ap_cnt(ap_cnt), vars(vars) {
+        ap_lookup.resize(ap_cnt);
+        pdt_list.resize(ap_cnt); // DELETE LATER, JUST FOR TESTING
     }
-    Event(const Event *e) : pos(e->pos), ts(e->ts), tp(e->tp), eof(e->eof), c(e->c), ap_cnt(e->ap_cnt), ap_lookup(e->ap_lookup) {}
+    
+    // DELETE pdt_list AFTER TESTING
+    Event(const Event *e) : pos(e->pos), ts(e->ts), tp(e->tp), eof(e->eof), c(e->c), ap_cnt(e->ap_cnt), ap_lookup(e->ap_lookup), vars(e->vars), pdt_list(e->pdt_list) {}
     bool operator<(const Event &e) const {
         return c < e.c || (c == e.c && ap_lookup < e.ap_lookup);
     }
     Event *clone() const {
         return new Event(this);
     }
+
     int eval(int fid) const {
         CHECK(0 <= fid && fid < ap_cnt);
         return !ap_lookup[fid].empty() ? 1 : 0;
-    }  
-    int evalAtom(const char *pred_name, int pred, const std::vector<Term> *args) const {
+    }
+
+    int evalAtom(const char *pred_name, int pred, const std::vector<Term> *args, const std::vector<std::string>& vars) const {
         if (c == -1) {
             CHECK(0 <= pred && pred < ap_cnt);
             
@@ -76,43 +84,42 @@ struct Event {
             
             if (!vars.empty()) {
                 auto pdt = Pdt::pdt_of(vars, maps);
+            
+                //// From pdt_test.cpp (old file)
+                //std::cout << "\n=== PDT for predicate " << pred << " ===\n";
+                //std::cout << "Pred: " << pred_name << "\n";
+                //std::cout << "vars: [";
+                //for (size_t i = 0; i < vars.size(); ++i) {
+                //    if (i > 0) std::cout << ", ";
+                //    std::cout << vars[i];
+                //}
+                //std::cout << "]\n";
+                //std::cout << "maps count: " << maps.size() << "\n";
+                //std::cout << "PDT structure:\n";
+                //
+                //std::function<void(const Pdt::PdtT<int>&, const std::string&, int)> print_pdt;
+                //print_pdt = [&](const Pdt::PdtT<int>& p, const std::string& indent, int depth) {
+                //    if (Pdt::isleaf(p)) {
+                //        std::cout << indent << "Leaf(" << Pdt::unleaf(p) << ")\n";
+                //    } else if (Pdt::isnode(p)) {
+                //        std::cout << indent << "Node(\"" << Pdt::var(p) << "\", [\n";
+                //        const auto& part = Pdt::part(p);
+                //        for (size_t i = 0; i < part.size(); ++i) {
+                //            const auto& [sub, sub_pdt] = part[i];
+                //            std::cout << indent << "  (" << Setc::to_string(sub) << ",\n";
+                //            print_pdt(sub_pdt, indent + "    ", depth + 1);
+                //            std::cout << indent << "  )";
+                //            if (i < part.size() - 1) std::cout << ",";
+                //            std::cout << "\n";
+                //        }
+                //        std::cout << indent << "])\n";
+                //    }
+                //};
+                //
+                //print_pdt(pdt, "  ", 0);
+                //std::cout << "=== End PDT ===\n";
                 
-                // From pdt_test.cpp (old file) - Written by AI
-                std::cout << "\n=== PDT for predicate " << pred << " ===\n";
-                std::cout << "Pred: " << pred_name << "\n";
-                std::cout << "vars: [";
-                for (size_t i = 0; i < vars.size(); ++i) {
-                    if (i > 0) std::cout << ", ";
-                    std::cout << vars[i];
-                }
-                std::cout << "]\n";
-                std::cout << "maps count: " << maps.size() << "\n";
-                std::cout << "PDT structure:\n";
-                
-                std::function<void(const Pdt::PdtT<int>&, const std::string&, int)> print_pdt;
-                print_pdt = [&](const Pdt::PdtT<int>& p, const std::string& indent, int depth) {
-                    if (Pdt::isleaf(p)) {
-                        std::cout << indent << "Leaf(" << Pdt::unleaf(p) << ")\n";
-                    } else if (Pdt::isnode(p)) {
-                        std::cout << indent << "Node(\"" << Pdt::var(p) << "\", [\n";
-                        const auto& part = Pdt::part(p);
-                        for (size_t i = 0; i < part.size(); ++i) {
-                            const auto& [sub, sub_pdt] = part[i];
-                            std::cout << indent << "  (" << Setc::to_string(sub) << ",\n";
-                            print_pdt(sub_pdt, indent + "    ", depth + 1);
-                            std::cout << indent << "  )";
-                            if (i < part.size() - 1) std::cout << ",";
-                            std::cout << "\n";
-                        }
-                        std::cout << indent << "])\n";
-                    }
-                };
-                
-                print_pdt(pdt, "  ", 0);
-                std::cout << "=== End PDT ===\n";
-                
-                // TODO: use pdt for evaluation 
-                // ASK Dmitriy: (Might make a seperate callable element in Event for the PDT)
+                pdt_list[pred] = std::optional<Pdt::PdtT<int>>(pdt);  // DELETE LATER, JUST FOR TESTING
             }
             
             return !ap_lookup[pred].empty() ? 1 : 0;
@@ -171,7 +178,7 @@ public:
     }
 
     Event *open_handle() override {
-        return new Event(trie->cnt);
+        return new Event(trie->cnt, trie->vars);
     }
     void read_handle(Event *e) override {
         CHECK(e != NULL);
@@ -188,6 +195,11 @@ public:
         if (parseNumber(mapped, &pos, &ts)) throw std::runtime_error("timestamp");
         e->ts = ts;
         e->tp++;
+
+        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        e->pdt_list.clear();           // Remove all PDTs
+        e->pdt_list.resize(e->ap_cnt);
+        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         //for (int i = 0; i < e->ap_cnt; i++) e->ap_lookup[i] = 0;
         for (int i = 0; i < e->ap_cnt; i++) {
             e->ap_lookup[i].clear();  // Clear tuple list for each predicate
@@ -292,7 +304,7 @@ public:
     }
 
     Event *open_handle() override {
-        return new Event(0);
+        return new Event(0, std::vector<std::string>());
     }
     void read_handle(Event *e) override {
         CHECK(e != NULL);

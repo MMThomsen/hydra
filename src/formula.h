@@ -11,6 +11,8 @@
 #include <cassert>
 #include <cstdlib>
 #include <vector>
+#include <functional>
+#include <algorithm>
 
 struct Regex;
 struct LookaheadRegex;
@@ -214,9 +216,13 @@ struct StarRegex : Regex {
 struct Formula {
     int is_temporal;
 
+    virtual std::vector<std::string> free_variables() const {
+        return std::vector<std::string>();
+    }
+
     Formula(int is_temporal = 1) : is_temporal(is_temporal) {}
     virtual ~Formula() {}
-    virtual bool eval(const Event *e) const {
+    virtual bool eval(const Event *e, const std::vector<std::string>& vars) const {
         assert(0);
     }
     virtual void accept(FormulaVisitor &v) = 0;
@@ -264,7 +270,7 @@ struct BoolFormula : Formula {
     bool b;
 
     BoolFormula(bool b) : Formula(0), b(b) {}
-    bool eval(const Event *e) const override {
+    bool eval(const Event *e, const std::vector<std::string>& vars) const override {
         return b;
     }
     void accept(FormulaVisitor &v) override {
@@ -290,8 +296,14 @@ struct AtomFormula : Formula {
         if (pred_owner) delete [] pred_name;
         if (args != NULL) delete args;      // Added
     }
-    bool eval(const Event *e) const override {
-        return e->evalAtom(pred_name, pred, args); // added args
+    bool eval(const Event *e, const std::vector<std::string>& vars) const override {
+        std::cout << "AtomFormula::eval():  vars = [";
+        for (size_t i = 0; i < vars.size(); ++i) {
+            if (i > 0) std::cout << ", ";
+            std::cout << vars[i];
+        }
+        std::cout << "]\n";
+        return e->evalAtom(pred_name, pred, args, vars); 
     }
     void accept(FormulaVisitor &v) override {
         v.visit(this);
@@ -303,6 +315,16 @@ struct AtomFormula : Formula {
     bool equalAtom(const AtomFormula *f) const override {
         return pred == f->pred;
     }
+
+    std::vector<string> free_variables() const override {
+        std::vector<std::string> vars;
+            for (const auto& term : *args) {
+                if (Term::isVar(term)) {
+                    vars.push_back(Term::unvar(term));
+                }
+            }
+        return vars;
+    }
 };
 
 
@@ -313,8 +335,8 @@ struct NegFormula : Formula {
     ~NegFormula() override {
         if (f != NULL) delete f;
     }
-    bool eval(const Event *e) const override {
-        return !f->eval(e);
+    bool eval(const Event *e, const std::vector<std::string>& vars) const override {
+        return !f->eval(e, vars);
     }
     void accept(FormulaVisitor &v) override {
         v.visit(this);
@@ -326,6 +348,11 @@ struct NegFormula : Formula {
     bool equalNeg(const NegFormula *sub) const override {
         return f->equal(sub->f);
     }
+
+    std::vector<std::string> free_variables() const override {
+        return f->free_variables();
+    }
+
 };
 
 struct AndFormula : Formula {
@@ -336,9 +363,116 @@ struct AndFormula : Formula {
         if (f != NULL) delete f;
         if (g != NULL) delete g;
     }
-    bool eval(const Event *e) const override {
-        return f->eval(e) && g->eval(e);
+    bool eval(const Event *e, const std::vector<std::string>& vars) const override {
+        // Create a function that calls evalAtomPDT and then use do_and, vars and apply2 
+        // to compare 
+
+
+        std::cout << "AndFormula::eval():  vars = [";
+        for (size_t i = 0; i < vars.size(); ++i) {
+            if (i > 0) std::cout << ", ";
+            std::cout << vars[i];
+        }
+        std::cout << "]\n";
+        return f->eval(e, vars) && g->eval(e, vars);
     }
+    //bool eval(const Event *e) const override { // remember to add vars/free variables here
+        // FIRST: Evaluate children to populate pdt_list
+        //bool f_result = f->eval(e);
+        //bool g_result = g->eval(e);
+//
+        //
+        //// THEN: Print PDTs from pdt_list for testing
+        //std::cout << "\n=== AndFormula::eval() - Checking PDTs ===\n";
+        //
+        //// Helper function to print a PDT
+        //std::function<void(const Pdt::PdtT<int>&, const std::string&, int)> print_pdt;
+        //print_pdt = [&](const Pdt::PdtT<int>& p, const std::string& indent, int depth) {
+        //    if (Pdt::isleaf(p)) {
+        //        std::cout << indent << "Leaf(" << Pdt::unleaf(p) << ")\n";
+        //    } else if (Pdt::isnode(p)) {
+        //        std::cout << indent << "Node(\"" << Pdt::var(p) << "\", [\n";
+        //        const auto& part = Pdt::part(p);
+        //        for (size_t i = 0; i < part.size(); ++i) {
+        //            const auto& [sub, sub_pdt] = part[i];
+        //            std::cout << indent << "  (" << Setc::to_string(sub) << ",\n";
+        //            print_pdt(sub_pdt, indent + "    ", depth + 1);
+        //            std::cout << indent << "  )";
+        //            if (i < part.size() - 1) std::cout << ",";
+        //            std::cout << "\n";
+        //        }
+        //        std::cout << indent << "])\n";
+        //    }
+        //};
+        //
+        //// Check and print PDT for predicate 0
+        //if (e->pdt_list.size() > 0 && e->pdt_list[0].has_value()) {
+        //    std::cout << "\n=== PDT for predicate 0 ===\n";
+        //    std::cout << "vars: [";
+        //    for (size_t i = 0; i < e->vars.size(); ++i) {
+        //        if (i > 0) std::cout << ", ";
+        //        std::cout << e->vars[i];
+        //    }
+        //    std::cout << "]\n";
+        //    std::cout << "PDT structure:\n";
+        //    print_pdt(e->pdt_list[0].value(), "  ", 0);
+        //    std::cout << "=== End PDT 0 ===\n";
+        //} else {
+        //    std::cout << "predicate 0 is empty\n";
+        //}
+        //
+        //// Check and print PDT for predicate 1
+        //if (e->pdt_list.size() > 1 && e->pdt_list[1].has_value()) {
+        //    std::cout << "\n=== PDT for predicate 1 ===\n";
+        //    std::cout << "vars: [";
+        //    for (size_t i = 0; i < e->vars.size(); ++i) {
+        //        if (i > 0) std::cout << ", ";
+        //        std::cout << e->vars[i];
+        //    }
+        //    std::cout << "]\n";
+        //    std::cout << "PDT structure:\n";
+        //    print_pdt(e->pdt_list[1].value(), "  ", 0);
+        //    std::cout << "=== End PDT 1 ===\n";
+        //} else {
+        //    std::cout << "predicate 1 is empty\n";
+        //}
+        //
+        //std::cout << "=== End AndFormula check ===\n\n";
+        //
+        //// Combine PDTs if both predicates have data
+        //if (e->pdt_list.size() > 1 && e->pdt_list[0].has_value() && e->pdt_list[1].has_value()) {
+        //    std::cout << "\n=== Combining PDTs with apply2 ===\n";
+        //    
+        //    // Logical AND function for combining PDT values
+        //    auto do_and = [](int val1, int val2) -> int {
+        //        return val1 && val2;
+        //    };
+//
+        //    // Combine PDTs using apply2
+        //    // Template parameters: <InputType1, InputType2, OutputType>
+        //    auto combined_pdt = Pdt::apply2<int, int, int>(e->vars,
+        //        do_and,
+        //        e->pdt_list[0].value(),
+        //        e->pdt_list[1].value()
+        //    );
+        //    
+        //    // Print the combined PDT
+        //    std::cout << "\n=== Combined PDT (p AND q) ===\n";
+        //    std::cout << "vars: [";
+        //    for (size_t i = 0; i < e->vars.size(); ++i) {
+        //        if (i > 0) std::cout << ", ";
+        //        std::cout << e->vars[i];
+        //    }
+        //    std::cout << "]\n";
+        //    std::cout << "Combined PDT structure:\n";
+        //    print_pdt(combined_pdt, "  ", 0);
+        //    std::cout << "=== End Combined PDT ===\n\n";
+        //} else {
+        //    std::cout << "Cannot combine PDTs: one or both predicates empty\n\n";
+        //}
+
+        //return f_result && g_result;
+    //}
     void accept(FormulaVisitor &v) override {
         v.visit(this);
     }
@@ -348,6 +482,19 @@ struct AndFormula : Formula {
     }
     bool equalAnd(const AndFormula *sub) const override {
         return f->equal(sub->f) && g->equal(sub->g);
+    }
+    std::vector<std::string> free_variables() const override {
+        std::vector<std::string> free_variables_f = f->free_variables();
+        std::vector<std::string> free_variables_g = g->free_variables();
+
+        std::vector<std::string> vars = free_variables_f;
+        for (const auto& var : free_variables_g) { 
+            if (std::find(vars.begin(), vars.end(), var) == vars.end()) {
+                vars.push_back(var);
+            }
+        }
+
+        return vars;
     }
 };
 
@@ -359,8 +506,14 @@ struct OrFormula : Formula {
         if (f != NULL) delete f;
         if (g != NULL) delete g;
     }
-    bool eval(const Event *e) const override {
-        return f->eval(e) || g->eval(e);
+    bool eval(const Event *e, const std::vector<std::string>& vars) const override {
+        std::cout << "OrFormula::eval():  vars = [";
+        for (size_t i = 0; i < vars.size(); ++i) {
+            if (i > 0) std::cout << ", ";
+            std::cout << vars[i];
+        }
+        std::cout << "]\n";
+        return f->eval(e, vars) || g->eval(e, vars);
     }
     void accept(FormulaVisitor &v) override {
         v.visit(this);
@@ -371,6 +524,19 @@ struct OrFormula : Formula {
     }
     bool equalOr(const OrFormula *sub) const override {
         return f->equal(sub->f) && g->equal(sub->g);
+    }
+    std::vector<std::string> free_variables() const override {
+        std::vector<std::string> free_variables_f = f->free_variables();
+        std::vector<std::string> free_variables_g = g->free_variables();
+
+        std::vector<std::string> vars = free_variables_f;
+        for (const auto& var : free_variables_g) { 
+            if (std::find(vars.begin(), vars.end(), var) == vars.end()) {
+                vars.push_back(var);
+            }
+        }
+
+        return vars;
     }
 };
 
@@ -392,6 +558,9 @@ struct PrevFormula : Formula {
     bool equalPrev(const PrevFormula *sub) const override {
         return f->equal(sub->f) && from == sub->from && to == sub->to;
     }
+    std::vector<std::string> free_variables() const override {
+        return f->free_variables();
+    }
 };
 
 struct NextFormula : Formula {
@@ -411,6 +580,9 @@ struct NextFormula : Formula {
     }
     bool equalNext(const NextFormula *sub) const override {
         return f->equal(sub->f) && from == sub->from && to == sub->to;
+    }
+    std::vector<std::string> free_variables() const override {
+        return f->free_variables();
     }
 };
 
@@ -433,6 +605,20 @@ struct SinceFormula : Formula {
     bool equalSince(const SinceFormula *sub) const override {
         return f->equal(sub->f) && g->equal(sub->g) && from == sub->from && to == sub->to;
     }
+
+    std::vector<std::string> free_variables() const override {
+        std::vector<std::string> free_variables_f = f->free_variables();
+        std::vector<std::string> free_variables_g = g->free_variables();
+
+        std::vector<std::string> vars = free_variables_f;
+        for (const auto& var : free_variables_g) { 
+            if (std::find(vars.begin(), vars.end(), var) == vars.end()) {
+                vars.push_back(var);
+            }
+        }
+
+        return vars;
+    }
 };
 
 struct UntilFormula : Formula {
@@ -454,6 +640,19 @@ struct UntilFormula : Formula {
     bool equalUntil(const UntilFormula *sub) const override {
         return f->equal(sub->f) && g->equal(sub->g) && from == sub->from && to == sub->to;
     }
+    std::vector<std::string> free_variables() const override {
+        std::vector<std::string> free_variables_f = f->free_variables();
+        std::vector<std::string> free_variables_g = g->free_variables();
+
+        std::vector<std::string> vars = free_variables_f;
+        for (const auto& var : free_variables_g) { 
+            if (std::find(vars.begin(), vars.end(), var) == vars.end()) {
+                vars.push_back(var);
+            }
+        }
+
+        return vars;
+    }
 };
 
 struct BwFormula : Formula {
@@ -474,6 +673,33 @@ struct BwFormula : Formula {
     bool equalBw(const BwFormula *f) const override {
         return r->equal(f->r) && from == f->from && to == f->to;
     }
+    
+    std::vector<std::string> free_variables() const override {
+        std::vector<std::string> vars;
+        std::function<void(Regex*)> collect = [&](Regex* regex) {
+            if (auto* lr = dynamic_cast<LookaheadRegex*>(regex)) {
+                auto fvars = lr->f->free_variables();
+                for (const auto& v : fvars) {
+                    if (std::find(vars.begin(), vars.end(), v) == vars.end()) vars.push_back(v);
+                }
+            } else if (auto* sr = dynamic_cast<SymbolRegex*>(regex)) {
+                auto fvars = sr->f->free_variables();
+                for (const auto& v : fvars) {
+                    if (std::find(vars.begin(), vars.end(), v) == vars.end()) vars.push_back(v);
+                }
+            } else if (auto* pr = dynamic_cast<PlusRegex*>(regex)) {
+                collect(pr->left);
+                collect(pr->right);
+            } else if (auto* tr = dynamic_cast<TimesRegex*>(regex)) {
+                collect(tr->left);
+                collect(tr->right);
+            } else if (auto* sr = dynamic_cast<StarRegex*>(regex)) {
+                collect(sr->body);
+            }
+        };
+        collect(r);
+        return vars;
+    }
 };
 
 struct FwFormula : Formula {
@@ -493,6 +719,33 @@ struct FwFormula : Formula {
     }
     bool equalFw(const FwFormula *f) const override {
         return r->equal(f->r) && from == f->from && to == f->to;
+    }
+    
+    std::vector<std::string> free_variables() const override {
+        std::vector<std::string> vars;
+        std::function<void(Regex*)> collect = [&](Regex* regex) {
+            if (auto* lr = dynamic_cast<LookaheadRegex*>(regex)) {
+                auto fvars = lr->f->free_variables();
+                for (const auto& v : fvars) {
+                    if (std::find(vars.begin(), vars.end(), v) == vars.end()) vars.push_back(v);
+                }
+            } else if (auto* sr = dynamic_cast<SymbolRegex*>(regex)) {
+                auto fvars = sr->f->free_variables();
+                for (const auto& v : fvars) {
+                    if (std::find(vars.begin(), vars.end(), v) == vars.end()) vars.push_back(v);
+                }
+            } else if (auto* pr = dynamic_cast<PlusRegex*>(regex)) {
+                collect(pr->left);
+                collect(pr->right);
+            } else if (auto* tr = dynamic_cast<TimesRegex*>(regex)) {
+                collect(tr->left);
+                collect(tr->right);
+            } else if (auto* sr = dynamic_cast<StarRegex*>(regex)) {
+                collect(sr->body);
+            }
+        };
+        collect(r);
+        return vars;
     }
 };
 

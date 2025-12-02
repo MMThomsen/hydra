@@ -34,13 +34,14 @@ struct BoolVerdict {
 
 struct BooleanVerdict {
     timestamp ts;
-    Boolean b;
+    Boolean b; //should be pdt<Boolean>
+    //include variable order list
 
     BooleanVerdict(timestamp ts, Boolean b) : ts(ts), b(b) {}
     bool operator==(const BooleanVerdict &bv) const {
         return ts == bv.ts && b == bv.b;
     }
-    BooleanVerdict operator!() const {
+    BooleanVerdict operator!() const { //change these such that they use apply and a function for the operator.
         return BooleanVerdict(this->ts, BooleanNot(this->b));
     }
     BooleanVerdict operator&&(const BooleanVerdict &w) const {

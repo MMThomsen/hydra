@@ -5,14 +5,15 @@
 #include "monitor.h"
 
 template<typename MH>
-std::pair<DFA *, MH *> createMH(Regex *r, InputReader *input_reader);
+std::pair<DFA *, MH *> createMH(Regex *r, InputReader *input_reader, const std::vector<std::string>& vars);
 
 class MonitorVisitor : public FormulaVisitor {
     InputReader *input_reader;
     Monitor *mon;
+    std::vector<std::string> vars;
 
 public:
-    MonitorVisitor(InputReader *input_reader) : input_reader(input_reader) {}
+    MonitorVisitor(InputReader *input_reader, const std::vector<std::string>& vars = {}) : input_reader(input_reader), vars(vars) {}
     Monitor *get_mon() {
         return mon;
     }
@@ -76,11 +77,11 @@ public:
         mon = new UntilMonitor(input_reader, input_reader->open_handle(), input_reader->open_handle(), monf, mong, f->from, f->to);
     }
     void visit(BwFormula *f) {
-        std::pair<DFA *, MH_BW *> icalp = createMH<MH_BW>(f->r, input_reader);
+        std::pair<DFA *, MH_BW *> icalp = createMH<MH_BW>(f->r, input_reader, vars);
         mon = new BwMonitor(f->from, f->to, icalp.first, icalp.second);
     }
     void visit(FwFormula *f) {
-        std::pair<DFA *, MH_FW *> icalp = createMH<MH_FW>(f->r, input_reader);
+        std::pair<DFA *, MH_FW *> icalp = createMH<MH_FW>(f->r, input_reader, vars);
         mon = new FwMonitor(f->from, f->to, icalp.first, icalp.second);
     }
     void visit(ExistsFormula *f) {  // Added

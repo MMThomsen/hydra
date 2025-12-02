@@ -147,7 +147,7 @@ formula
     : "FALSE"                                           { $$ = new BoolFormula(false); }
     | "TRUE"                                            { $$ = new BoolFormula(true); }
     | "ATOM"                                            { $$ = new AtomFormula($1, trie.getOrAdd($1), new std::vector<Term>(), 1); }
-    | "ATOM" "OPEN" args[a] "CLOSE"                     { $$ = new AtomFormula($1, trie.getOrAdd($1), $a, 1); }
+    | "ATOM" "OPEN" args[a] "CLOSE"                     { $$ = new AtomFormula($1, trie.getOrAdd($1), trie.addVars($a), 1); }
     | "NEG" formula[f]                                  { $$ = new NegFormula($f); }
     | formula[f] "CONJ" formula[g]                      { $$ = new AndFormula($f, $g); }
     | formula[f] "DISJ" formula[g]                      { $$ = new OrFormula($f, $g); }
