@@ -639,8 +639,8 @@ struct Part {
 - apply1_reduce         : DONE                      (TESTED)
 - apply2_reduce         : DONE                      (TESTED)
 - split_prod_reduce     : DONE                      (TESTED)
-- split_list_reduce     : Needed
-- hide_reduce           : Needed
+- split_list_reduce     : DONE                      (TESTED)
+- hide_reduce           : DONE                      (TESTED)
 - fst_leaf              : No Needed (used for agg)
 - to_latex              : Not needed
 - to_light_string       : Not needed

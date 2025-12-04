@@ -18,8 +18,66 @@ Monitor *NonTempMonitor::clone() {
 BooleanVerdict NonTempMonitor::step_impl(const std::vector<std::string>& vars) {
     input_reader->read_handle(handle);
     if (handle->eof) throw EOL();
-    bool b = fmla->eval(handle, vars);
-    return BooleanVerdict(handle->ts, b ? TRUE : FALSE);
+    Pdt::PdtT<bool> b = fmla->eval(handle, vars);
+            auto do_boolean = [](bool v) -> Boolean { 
+            return v ? TRUE : FALSE;
+        };
+        Pdt::PdtT<Boolean> pb = Pdt::apply1<bool, Boolean>(vars, do_boolean, b);
+
+        auto leaf_identity = [](Boolean b) -> Boolean { return b; };
+        auto check_any_true = [](const Part::PartT<Boolean>& part) -> Boolean {
+            // Return TRUE if any element in the partition is TRUE
+            for (const auto& [sub, val] : part) {
+                if (val == TRUE) return TRUE;
+            }
+            return FALSE;
+        };
+        
+        // Helper function to print a Boolean PDT
+        std::function<void(const Pdt::PdtT<Boolean>&, const std::string&, int)> print_pdt;
+        print_pdt = [&](const Pdt::PdtT<Boolean>& p, const std::string& indent, int depth) {
+            if (Pdt::isleaf(p)) {
+                std::cout << indent << "Leaf(" << (Pdt::unleaf(p) == TRUE ? "TRUE" : "FALSE") << ")\n";
+            } else if (Pdt::isnode(p)) {
+                std::cout << indent << "Node(\"" << Pdt::var(p) << "\", [\n";
+                const auto& part = Pdt::part(p);
+                for (size_t i = 0; i < part.size(); ++i) {
+                    const auto& [sub, sub_pdt] = part[i];
+                    std::cout << indent << "  (" << Setc::to_string(sub) << ",\n";
+                    print_pdt(sub_pdt, indent + "    ", depth + 1);
+                    std::cout << indent << "  )";
+                    if (i < part.size() - 1) std::cout << ",";
+                    std::cout << "\n";
+                }
+                std::cout << indent << "])\n";
+            }
+        };
+        
+        // Simple recursive function to check if any leaf in PDT is TRUE
+        // Only check explicit (non-complement) branches
+        std::function<bool(const Pdt::PdtT<Boolean>&)> has_true_leaf;
+        has_true_leaf = [&](const Pdt::PdtT<Boolean>& pdt) -> bool {
+            if (Pdt::isleaf(pdt)) {
+                return Pdt::unleaf(pdt) == TRUE;
+            } else if (Pdt::isnode(pdt)) {
+                const auto& part = Pdt::part(pdt);
+                for (const auto& [sub, sub_pdt] : part) {
+                    // Skip complement branches - only check explicit domain values
+                    if (Setc::isComplement(sub)) continue;
+                    
+                    if (has_true_leaf(sub_pdt)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            return false;
+        };
+        
+        Boolean result = has_true_leaf(pb) ? TRUE : FALSE;
+        
+        return BooleanVerdict(handle->ts, result);
+        //return BooleanVerdict(handle->ts, b ? TRUE : FALSE); // change true to / last part, to return a Pdt::PdtT<Boolean>
 }
 
 Monitor *PrevMonitor::clone() {

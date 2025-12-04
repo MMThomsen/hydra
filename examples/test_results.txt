@@ -1,0 +1,382 @@
+================================================================================
+TEST 1: Simple AND with variable binding - PASSED
+================================================================================
+Command:
+./hydra ./examples/test_simple_and.mdl ./examples/test_simple_and.log
+
+Formula:
+p(x,y) AND q(y,z)
+
+Log:
+@0 p(Alice,5) q(5,10)
+@1 p(Bob,3) q(4,8)
+@2 p(Alice,7) q(7,15)
+@3 p(Charlie,2) q(3,6)
+
+Expected Results:
+@0: TRUE  (Alice→5→10: p(Alice,5) AND q(5,10) both satisfied) 
+@1: FALSE (Bob→3 but q has 4, no consistent y binding)
+@2: TRUE  (Alice→7→15: p(Alice,7) AND q(7,15) both satisfied)
+@3: FALSE (Charlie→2 but q has 3, no consistent y binding)
+
+Result:
+0:0 true
+1:0 false
+2:0 true
+3:0 false
+
+================================================================================
+TEST 2: Simple OR with shared variable - PASSED
+================================================================================
+Command:
+./hydra ./examples/test_simple_or.mdl ./examples/test_simple_or.log
+
+Formula:
+p(x,y) OR q(x,z)
+
+Log:
+@0 p(Alice,5)
+@1 q(Bob,10)
+@2 p(Charlie,3) q(Charlie,15)
+@3 
+
+Expected Results:
+@0: TRUE  (p(Alice,5) satisfies the formula)
+@1: TRUE  (q(Bob,10) satisfies the formula)
+@2: TRUE  (both p(Charlie,3) and q(Charlie,15) satisfy)
+@3: FALSE (empty timestamp, no predicates)
+
+Result:
+0:0 true
+1:0 true
+2:0 true
+3:0 false
+
+================================================================================
+TEST 3: Negation
+================================================================================
+Command:
+./hydra ./examples/test_negation.mdl ./examples/test_negation.log
+
+Formula:
+NOT p(x,y)
+
+Log:
+@0 p(Alice,5)
+@1 
+@2 p(Bob,3) p(Charlie,7)
+@3 q(Dave,10)
+
+Expected Results:
+@0: FALSE (p(Alice,5) exists, negation fails)
+@1: TRUE  (no p predicates, negation succeeds)
+@2: FALSE (p predicates exist)
+@3: TRUE  (only q exists, no p predicates)
+
+Result:
+0:0 false
+1:0 true
+2:0 false
+3:0 true
+
+================================================================================
+TEST 4: Complex AND/OR combination
+================================================================================
+Command:
+./hydra ./examples/test_complex_and_or.mdl ./examples/test_complex_and_or.log
+
+Formula:
+(p(x,y) AND q(y,z)) OR r(x,z)
+
+Log:
+@0 p(Alice,5) q(5,10)
+@1 r(Bob,20)
+@2 p(Charlie,3) q(4,15)
+@3 p(Dave,7) q(7,21) r(Dave,21)
+
+Expected Results:
+@0: TRUE  (p(Alice,5) AND q(5,10) satisfies left side)
+@1: TRUE  (r(Bob,20) satisfies right side)
+@2: FALSE (p and q don't connect, r doesn't exist)
+@3: TRUE  (both sides satisfied: p∧q with Dave→7→21 AND r(Dave,21))
+
+Result:
+0:0 true
+1:0 true
+2:0 false
+3:0 true
+
+================================================================================
+TEST 5: Three-variable circular binding
+================================================================================
+Command:
+./hydra ./examples/test_three_vars.mdl ./examples/test_three_vars.log
+
+Formula:
+p(x,y) AND q(y,z) AND r(z,x)
+
+Log:
+@0 p(Alice,5) q(5,Bob) r(Bob,Alice)
+@1 p(Charlie,3) q(3,Dave)
+@2 p(Eve,7) q(7,Frank) r(Frank,Eve)
+@3 p(Alice,10) q(10,Bob) r(Bob,Charlie)
+
+Expected Results:
+@0: TRUE  (Alice→5→Bob→Alice: circular binding works)
+@1: FALSE (Charlie→3→Dave but no r(Dave,Charlie))
+@2: TRUE  (Eve→7→Frank→Eve: circular binding works)
+@3: FALSE (Alice→10→Bob but r(Bob,Charlie) breaks cycle)
+
+Result:
+0:0 true
+1:0 false
+2:0 true
+3:0 false
+================================================================================
+TEST 6: Same variables in different predicates
+================================================================================
+Command:
+./hydra ./examples/test_no_match.mdl ./examples/test_no_match.log
+
+Formula:
+p(x,y) AND q(x,y)
+
+Log:
+@0 p(Alice,5) q(Alice,10)
+@1 p(Bob,3) q(Charlie,3)
+@2 p(Dave,7) q(Dave,7)
+@3 p(Eve,2) q(Frank,8)
+
+Expected Results:
+@0: FALSE (Alice,5 vs Alice,10: x matches but y differs)
+@1: FALSE (Bob vs Charlie: x differs)
+@2: TRUE  (Dave,7 matches exactly in both predicates!)
+@3: FALSE (Eve vs Frank: x differs)
+
+Result:
+0:0 false
+1:0 false
+2:0 true
+3:0 false
+
+================================================================================
+TEST 7: Propositional atoms - AND
+================================================================================
+Command:
+./hydra ./examples/test_prop_and.mdl ./examples/test_prop_and.log
+
+Formula:
+p AND q
+
+Log:
+@0 p q
+@1 p
+@2 q
+@3 
+
+Expected Results:
+@0: TRUE  (both p and q present)
+@1: FALSE (only p, missing q)
+@2: FALSE (only q, missing p)
+@3: FALSE (neither present)
+
+Result:
+0:0 true
+1:0 false
+2:0 false
+3:0 false
+
+================================================================================
+TEST 8: Propositional atoms - OR
+================================================================================
+Command:
+./hydra ./examples/test_prop_or.mdl ./examples/test_prop_or.log
+
+Formula:
+p OR q
+
+Log:
+@0 p q
+@1 p
+@2 q
+@3 
+
+Expected Results:
+@0: TRUE  (both present)
+@1: TRUE  (p present)
+@2: TRUE  (q present)
+@3: FALSE (neither present)
+
+Result:
+0:0 true
+1:0 true
+2:0 true
+3:0 false
+
+================================================================================
+TEST 9: Mixed propositional and first-order - AND
+================================================================================
+Command:
+./hydra ./examples/test_mixed_and.mdl ./examples/test_mixed_and.log
+
+Formula:
+p AND q(x,y)
+
+Log:
+@0 p q(Alice,5)
+@1 p
+@2 q(Bob,10)
+@3 p q(Charlie,3) q(Dave,7)
+
+Expected Results:
+@0: TRUE  (p present AND q(Alice,5) present)
+@1: FALSE (p present but no q)
+@2: FALSE (q present but no p)
+@3: TRUE  (p present AND q has tuples - any tuple satisfies)
+
+Result:
+0:0 true
+1:0 false
+2:0 false
+3:0 true
+
+================================================================================
+TEST 10: Mixed propositional and first-order - OR
+================================================================================
+Command:
+./hydra ./examples/test_mixed_or.mdl ./examples/test_mixed_or.log
+
+Formula:
+p OR q(x,y)
+
+Log:
+@0 p q(Alice,5)
+@1 p
+@2 q(Bob,10)
+@3 
+
+Expected Results:
+@0: TRUE  (both present)
+@1: TRUE  (p present)
+@2: TRUE  (q(Bob,10) present)
+@3: FALSE (neither present)
+
+result:
+0:0 true
+1:0 true
+2:0 true
+3:0 false
+
+================================================================================
+TEST 11: Negation of propositional atom
+================================================================================
+Command:
+./hydra ./examples/test_prop_neg.mdl ./examples/test_prop_neg.log
+
+Formula:
+NOT p
+
+Log:
+@0 p
+@1 q
+@2 p q
+@3 
+
+Expected Results:
+@0: FALSE (p present, negation fails)
+@1: TRUE  (p absent, negation succeeds)
+@2: FALSE (p present)
+@3: TRUE  (p absent)
+
+Result:
+0:0 false
+1:0 true
+2:0 false
+3:0 true
+
+================================================================================
+TEST 12: Negation of AND with variables
+================================================================================
+Command:
+./hydra ./examples/test_neg_and.mdl ./examples/test_neg_and.log
+
+Formula:
+NOT (p(x,y) AND q(y,x))
+
+Log:
+@0 p(Alice,Bob) q(Bob,Alice)
+@1 p(Charlie,Dave) q(Dave,Frank)
+@2 p(Eve,5) q(5,Eve)
+@3 
+
+Expected Results:
+@0: FALSE (p(Alice,Bob) AND q(Bob,Alice) both satisfied, negation fails)
+@1: TRUE  (no consistent binding: y=Dave but q has (Dave,Frank) not (Dave,Charlie))
+@2: FALSE (p(Eve,5) AND q(5,Eve) both satisfied)
+@3: TRUE  (no predicates, AND is false, negation succeeds)
+
+Result:
+0:0 false
+1:0 true
+2:0 false
+3:0 true
+
+================================================================================
+TEST 13: Arity mismatch - propositional vs first-order
+================================================================================
+Command:
+./hydra ./examples/test_arity_mismatch.mdl ./examples/test_arity_mismatch.log
+
+Formula:
+p(x,y) AND q(y,x)
+
+Log:
+@0 p q(2,Bob)
+@1 p(Alice,5) q(5,Alice)
+@2 q(Charlie,Dave)
+@3 p(Eve,7)
+
+Expected Results:
+@0: FALSE (p has no args in log but formula expects p(x,y))
+@1: TRUE  (p(Alice,5) AND q(5,Alice) both satisfied with x=Alice, y=5)
+@2: FALSE (q present but p missing)
+@3: FALSE (p present but q missing)
+
+Note: @0 demonstrates arity mismatch - propositional p in log vs p(x,y) in formula.
+The propositional p should NOT match p(x,y) because arities differ.
+
+Result:
+0:0 false
+1:0 true
+2:0 false
+3:0 false
+
+================================================================================
+TEST 14: Arity mismatch - first-order in log vs propositional in formula
+================================================================================
+Command:
+./hydra ./examples/test_arity_mismatch2.mdl ./examples/test_arity_mismatch2.log
+
+Formula:
+p AND q(y,x)
+
+Log:
+@0 p q(2,Bob)
+@1 p(Alice,5) q(5,Alice)
+@2 q(Charlie,Dave)
+@3 p(Eve,7)
+
+Expected Results:
+@0: TRUE  (propositional p present AND q(2,Bob) present with y=2, x=Bob)
+@1: FALSE (p(Alice,5) has arity 2 but formula expects propositional p with arity 0)
+@2: FALSE (q present but p missing)
+@3: FALSE (p(Eve,7) has wrong arity, effectively p is missing)
+
+Note: @1 and @3 demonstrate arity mismatch - first-order p in log vs propositional p in formula.
+The first-order p(Alice,5) should NOT match propositional p because arities differ (2 vs 0).
+
+Result:
+0:0 true
+1:0 false
+2:0 false
+3:0 false

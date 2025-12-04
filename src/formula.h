@@ -222,7 +222,7 @@ struct Formula {
 
     Formula(int is_temporal = 1) : is_temporal(is_temporal) {}
     virtual ~Formula() {}
-    virtual bool eval(const Event *e, const std::vector<std::string>& vars) const {
+    virtual Pdt::PdtT<bool> eval(const Event *e, const std::vector<std::string>& vars) const {
         assert(0);
     }
     virtual void accept(FormulaVisitor &v) = 0;
@@ -270,8 +270,8 @@ struct BoolFormula : Formula {
     bool b;
 
     BoolFormula(bool b) : Formula(0), b(b) {}
-    bool eval(const Event *e, const std::vector<std::string>& vars) const override {
-        return b;
+    Pdt::PdtT<bool> eval(const Event *e, const std::vector<std::string>& vars) const override {
+        return Pdt::Leaf(b);
     }
     void accept(FormulaVisitor &v) override {
         v.visit(this);
@@ -296,14 +296,16 @@ struct AtomFormula : Formula {
         if (pred_owner) delete [] pred_name;
         if (args != NULL) delete args;      // Added
     }
-    bool eval(const Event *e, const std::vector<std::string>& vars) const override {
-        std::cout << "AtomFormula::eval():  vars = [";
-        for (size_t i = 0; i < vars.size(); ++i) {
-            if (i > 0) std::cout << ", ";
-            std::cout << vars[i];
-        }
-        std::cout << "]\n";
-        return e->evalAtom(pred_name, pred, args, vars); 
+    Pdt::PdtT<bool> eval(const Event *e, const std::vector<std::string>& vars) const override {
+        //std::cout << "AtomFormula::eval():  vars = [";
+        //for (size_t i = 0; i < vars.size(); ++i) {
+        //    if (i > 0) std::cout << ", ";
+        //    std::cout << vars[i];
+        //}
+        //std::cout << "]\n";
+        auto int_pdt = e->evalAtom(pred_name, pred, args, vars);
+        auto to_bool = [](int val) -> bool { return val != 0; };
+        return Pdt::apply1<int, bool>(vars, to_bool, int_pdt);
     }
     void accept(FormulaVisitor &v) override {
         v.visit(this);
@@ -335,8 +337,31 @@ struct NegFormula : Formula {
     ~NegFormula() override {
         if (f != NULL) delete f;
     }
-    bool eval(const Event *e, const std::vector<std::string>& vars) const override {
-        return !f->eval(e, vars);
+    Pdt::PdtT<bool> eval(const Event *e, const std::vector<std::string>& vars) const override {
+        //std::cout << "\n ####################################################### \n";
+        //std::cout << "\n=== NegFormula::eval() - Timestamp: " << e->ts << " ===\n";
+        //std::cout << " ####################################################### \n";
+        
+        // Evaluate the inner formula
+        auto pdt_before = f->eval(e, vars);
+        
+        // Print PDT before negation using built-in to_string
+        //std::cout << "PDT BEFORE negation:\n";
+        //auto bool_printer = [](const std::string& indent, bool val) -> std::string {
+        //    return indent + (val ? "TRUE" : "FALSE");
+        //};
+        //std::cout << Pdt::to_string(bool_printer, "", pdt_before) << "\n";
+        
+        // Apply negation
+        auto negate = [](bool val) -> bool { return !val; };
+        auto pdt_after = Pdt::apply1<bool, bool>(vars, negate, pdt_before);
+        
+        // Print PDT after negation
+        //std::cout << "PDT AFTER negation:\n";
+        //std::cout << Pdt::to_string(bool_printer, "", pdt_after) << "\n";
+        //std::cout << "=== End NegFormula::eval() ===\n\n";
+        
+        return pdt_after;
     }
     void accept(FormulaVisitor &v) override {
         v.visit(this);
@@ -363,115 +388,112 @@ struct AndFormula : Formula {
         if (f != NULL) delete f;
         if (g != NULL) delete g;
     }
-    bool eval(const Event *e, const std::vector<std::string>& vars) const override {
-        // Create a function that calls evalAtomPDT and then use do_and, vars and apply2 
-        // to compare 
+    Pdt::PdtT<bool> eval(const Event *e, const std::vector<std::string>& vars) const override {
+        auto do_and = [](bool v1, bool v2) -> bool {
+            return v1 && v2;
+        };
 
-
-        std::cout << "AndFormula::eval():  vars = [";
-        for (size_t i = 0; i < vars.size(); ++i) {
-            if (i > 0) std::cout << ", ";
-            std::cout << vars[i];
-        }
-        std::cout << "]\n";
-        return f->eval(e, vars) && g->eval(e, vars);
+        return Pdt::apply2<bool, bool, bool>(vars,
+            do_and,
+            f->eval(e, vars),
+            g->eval(e, vars)
+        );
     }
-    //bool eval(const Event *e) const override { // remember to add vars/free variables here
-        // FIRST: Evaluate children to populate pdt_list
-        //bool f_result = f->eval(e);
-        //bool g_result = g->eval(e);
+    //PdtPdtT<bool> eval(const Event *e, const std::vector<std::string>& vars) const override { // remember to add vars/free variables here
+    //    // FIRST: Evaluate children to populate pdt_list
+    //    bool f_result = f->eval(e, vars);
+    //    bool g_result = g->eval(e, vars);
 //
-        //
-        //// THEN: Print PDTs from pdt_list for testing
-        //std::cout << "\n=== AndFormula::eval() - Checking PDTs ===\n";
-        //
-        //// Helper function to print a PDT
-        //std::function<void(const Pdt::PdtT<int>&, const std::string&, int)> print_pdt;
-        //print_pdt = [&](const Pdt::PdtT<int>& p, const std::string& indent, int depth) {
-        //    if (Pdt::isleaf(p)) {
-        //        std::cout << indent << "Leaf(" << Pdt::unleaf(p) << ")\n";
-        //    } else if (Pdt::isnode(p)) {
-        //        std::cout << indent << "Node(\"" << Pdt::var(p) << "\", [\n";
-        //        const auto& part = Pdt::part(p);
-        //        for (size_t i = 0; i < part.size(); ++i) {
-        //            const auto& [sub, sub_pdt] = part[i];
-        //            std::cout << indent << "  (" << Setc::to_string(sub) << ",\n";
-        //            print_pdt(sub_pdt, indent + "    ", depth + 1);
-        //            std::cout << indent << "  )";
-        //            if (i < part.size() - 1) std::cout << ",";
-        //            std::cout << "\n";
-        //        }
-        //        std::cout << indent << "])\n";
-        //    }
-        //};
-        //
-        //// Check and print PDT for predicate 0
-        //if (e->pdt_list.size() > 0 && e->pdt_list[0].has_value()) {
-        //    std::cout << "\n=== PDT for predicate 0 ===\n";
-        //    std::cout << "vars: [";
-        //    for (size_t i = 0; i < e->vars.size(); ++i) {
-        //        if (i > 0) std::cout << ", ";
-        //        std::cout << e->vars[i];
-        //    }
-        //    std::cout << "]\n";
-        //    std::cout << "PDT structure:\n";
-        //    print_pdt(e->pdt_list[0].value(), "  ", 0);
-        //    std::cout << "=== End PDT 0 ===\n";
-        //} else {
-        //    std::cout << "predicate 0 is empty\n";
-        //}
-        //
-        //// Check and print PDT for predicate 1
-        //if (e->pdt_list.size() > 1 && e->pdt_list[1].has_value()) {
-        //    std::cout << "\n=== PDT for predicate 1 ===\n";
-        //    std::cout << "vars: [";
-        //    for (size_t i = 0; i < e->vars.size(); ++i) {
-        //        if (i > 0) std::cout << ", ";
-        //        std::cout << e->vars[i];
-        //    }
-        //    std::cout << "]\n";
-        //    std::cout << "PDT structure:\n";
-        //    print_pdt(e->pdt_list[1].value(), "  ", 0);
-        //    std::cout << "=== End PDT 1 ===\n";
-        //} else {
-        //    std::cout << "predicate 1 is empty\n";
-        //}
-        //
-        //std::cout << "=== End AndFormula check ===\n\n";
-        //
-        //// Combine PDTs if both predicates have data
-        //if (e->pdt_list.size() > 1 && e->pdt_list[0].has_value() && e->pdt_list[1].has_value()) {
-        //    std::cout << "\n=== Combining PDTs with apply2 ===\n";
-        //    
-        //    // Logical AND function for combining PDT values
-        //    auto do_and = [](int val1, int val2) -> int {
-        //        return val1 && val2;
-        //    };
+    //    
+    //    // THEN: Print PDTs from pdt_list for testing
+    //    std::cout << "\n=== AndFormula::eval() - Checking PDTs ===\n";
+    //    
+    //    // Helper function to print a PDT
+    //    std::function<void(const Pdt::PdtT<int>&, const std::string&, int)> print_pdt;
+    //    print_pdt = [&](const Pdt::PdtT<int>& p, const std::string& indent, int depth) {
+    //        if (Pdt::isleaf(p)) {
+    //            std::cout << indent << "Leaf(" << Pdt::unleaf(p) << ")\n";
+    //        } else if (Pdt::isnode(p)) {
+    //            std::cout << indent << "Node(\"" << Pdt::var(p) << "\", [\n";
+    //            const auto& part = Pdt::part(p);
+    //            for (size_t i = 0; i < part.size(); ++i) {
+    //                const auto& [sub, sub_pdt] = part[i];
+    //                std::cout << indent << "  (" << Setc::to_string(sub) << ",\n";
+    //                print_pdt(sub_pdt, indent + "    ", depth + 1);
+    //                std::cout << indent << "  )";
+    //                if (i < part.size() - 1) std::cout << ",";
+    //                std::cout << "\n";
+    //            }
+    //            std::cout << indent << "])\n";
+    //        }
+    //    };
+    //    
+    //    // Check and print PDT for predicate 0
+    //    if (e->pdt_list.size() > 0 && e->pdt_list[0].has_value()) {
+    //        std::cout << "\n=== PDT for predicate 0 ===\n";
+    //        std::cout << "vars: [";
+    //        for (size_t i = 0; i < vars.size(); ++i) {
+    //            if (i > 0) std::cout << ", ";
+    //            std::cout << vars[i];
+    //        }
+    //        std::cout << "]\n";
+    //        std::cout << "PDT structure:\n";
+    //        print_pdt(e->pdt_list[0].value(), "  ", 0);
+    //        std::cout << "=== End PDT 0 ===\n";
+    //    } else {
+    //        std::cout << "predicate 0 is empty\n";
+    //    }
+    //    
+    //    // Check and print PDT for predicate 1
+    //    if (e->pdt_list.size() > 1 && e->pdt_list[1].has_value()) {
+    //        std::cout << "\n=== PDT for predicate 1 ===\n";
+    //        std::cout << "vars: [";
+    //        for (size_t i = 0; i < vars.size(); ++i) {
+    //            if (i > 0) std::cout << ", ";
+    //            std::cout << vars[i];
+    //        }
+    //        std::cout << "]\n";
+    //        std::cout << "PDT structure:\n";
+    //        print_pdt(e->pdt_list[1].value(), "  ", 0);
+    //        std::cout << "=== End PDT 1 ===\n";
+    //    } else {
+    //        std::cout << "predicate 1 is empty\n";
+    //    }
+    //    
+    //    std::cout << "=== End AndFormula check ===\n\n";
+    //    
+    //    // Combine PDTs if both predicates have data
+    //    if (e->pdt_list.size() > 1 && e->pdt_list[0].has_value() && e->pdt_list[1].has_value()) {
+    //        std::cout << "\n=== Combining PDTs with apply2 ===\n";
+    //        
+    //        // Logical AND function for combining PDT values
+    //        auto do_and = [](int val1, int val2) -> int {
+    //            return val1 && val2;
+    //        };
 //
-        //    // Combine PDTs using apply2
-        //    // Template parameters: <InputType1, InputType2, OutputType>
-        //    auto combined_pdt = Pdt::apply2<int, int, int>(e->vars,
-        //        do_and,
-        //        e->pdt_list[0].value(),
-        //        e->pdt_list[1].value()
-        //    );
-        //    
-        //    // Print the combined PDT
-        //    std::cout << "\n=== Combined PDT (p AND q) ===\n";
-        //    std::cout << "vars: [";
-        //    for (size_t i = 0; i < e->vars.size(); ++i) {
-        //        if (i > 0) std::cout << ", ";
-        //        std::cout << e->vars[i];
-        //    }
-        //    std::cout << "]\n";
-        //    std::cout << "Combined PDT structure:\n";
-        //    print_pdt(combined_pdt, "  ", 0);
-        //    std::cout << "=== End Combined PDT ===\n\n";
-        //} else {
-        //    std::cout << "Cannot combine PDTs: one or both predicates empty\n\n";
-        //}
-
-        //return f_result && g_result;
+    //        // Combine PDTs using apply2
+    //        // Template parameters: <InputType1, InputType2, OutputType>
+    //        auto combined_pdt = Pdt::apply2<int, int, int>(vars,
+    //            do_and,
+    //            e->pdt_list[0].value(),
+    //            e->pdt_list[1].value()
+    //        );
+    //        
+    //        // Print the combined PDT
+    //        std::cout << "\n=== Combined PDT (p AND q) ===\n";
+    //        std::cout << "vars: [";
+    //        for (size_t i = 0; i < vars.size(); ++i) {
+    //            if (i > 0) std::cout << ", ";
+    //            std::cout << vars[i];
+    //        }
+    //        std::cout << "]\n";
+    //        std::cout << "Combined PDT structure:\n";
+    //        print_pdt(combined_pdt, "  ", 0);
+    //        std::cout << "=== End Combined PDT ===\n\n";
+    //    } else {
+    //        std::cout << "Cannot combine PDTs: one or both predicates empty\n\n";
+    //    }
+    //    return f_result && g_result;
     //}
     void accept(FormulaVisitor &v) override {
         v.visit(this);
@@ -506,14 +528,22 @@ struct OrFormula : Formula {
         if (f != NULL) delete f;
         if (g != NULL) delete g;
     }
-    bool eval(const Event *e, const std::vector<std::string>& vars) const override {
-        std::cout << "OrFormula::eval():  vars = [";
-        for (size_t i = 0; i < vars.size(); ++i) {
-            if (i > 0) std::cout << ", ";
-            std::cout << vars[i];
-        }
-        std::cout << "]\n";
-        return f->eval(e, vars) || g->eval(e, vars);
+    Pdt::PdtT<bool> eval(const Event *e, const std::vector<std::string>& vars) const override {
+        //std::cout << "OrFormula::eval():  vars = [";
+        //for (size_t i = 0; i < vars.size(); ++i) {
+        //    if (i > 0) std::cout << ", ";
+        //    std::cout << vars[i];
+        //}
+        //std::cout << "]\n";
+        auto do_or = [](bool v1, bool v2) -> bool {
+            return v1 || v2;
+        };
+
+        return Pdt::apply2<bool, bool, bool>(vars,
+            do_or,
+            f->eval(e, vars),
+            g->eval(e, vars)
+        );
     }
     void accept(FormulaVisitor &v) override {
         v.visit(this);

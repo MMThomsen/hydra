@@ -32,18 +32,16 @@ struct Event {
     int c;
     int ap_cnt;
     vector<vector<vector<Dom>>> ap_lookup;  // [pred_id][tuple_index][arg_position]
-    vector<std::string> vars;               // Remove this from event, this should be handle through the mon->step() etc.
-    mutable vector<std::optional<Pdt::PdtT<int>>> pdt_list;  // DELETE LATER, JUST FOR TESTING
-    // var list [Var('x'), Var('y'), var('z')]
+    mutable vector<std::optional<Pdt::PdtT<int>>> pdt_list;
 
     //Event(int ap_cnt = 0) : pos(0), ts(0), tp(-1), eof(0), c(-1), ap_cnt(ap_cnt), ap_lookup(ap_cnt) {}
-    Event(int ap_cnt, const std::vector<std::string> &vars) : pos(0), ts(0), tp(-1), eof(0), c(-1), ap_cnt(ap_cnt), vars(vars) {
+    Event(int ap_cnt) : pos(0), ts(0), tp(-1), eof(0), c(-1), ap_cnt(ap_cnt) {
         ap_lookup.resize(ap_cnt);
         pdt_list.resize(ap_cnt); // DELETE LATER, JUST FOR TESTING
     }
     
     // DELETE pdt_list AFTER TESTING
-    Event(const Event *e) : pos(e->pos), ts(e->ts), tp(e->tp), eof(e->eof), c(e->c), ap_cnt(e->ap_cnt), ap_lookup(e->ap_lookup), vars(e->vars), pdt_list(e->pdt_list) {}
+    Event(const Event *e) : pos(e->pos), ts(e->ts), tp(e->tp), eof(e->eof), c(e->c), ap_cnt(e->ap_cnt), ap_lookup(e->ap_lookup), pdt_list(e->pdt_list) {}
     bool operator<(const Event &e) const {
         return c < e.c || (c == e.c && ap_lookup < e.ap_lookup);
     }
@@ -56,34 +54,41 @@ struct Event {
         return !ap_lookup[fid].empty() ? 1 : 0;
     }
 
-    int evalAtom(const char *pred_name, int pred, const std::vector<Term> *args, const std::vector<std::string>& vars) const {
+    Pdt::PdtT<int> evalAtom(const char *pred_name, int pred, const std::vector<Term> *args, const std::vector<std::string>& vars) const {
         if (c == -1) {
             CHECK(0 <= pred && pred < ap_cnt);
             
-            if (args == nullptr) {
-                return !ap_lookup[pred].empty() ? 1 : 0;
-            }
+            // Determine expected arity from formula
+            size_t expected_arity = (args == nullptr) ? 0 : args->size();
             
-            std::vector<std::string> vars;
-            for (const auto& term : *args) {
-                if (Term::isVar(term)) {
-                    vars.push_back(Term::unvar(term));
-                }
-            }
-            
+            std::vector<std::string> pdt_vars;
             std::vector<std::unordered_map<std::string, Dom>> maps;
             
-            for (const auto& tuple : ap_lookup[pred]) {
-                std::unordered_map<std::string, Dom> empty_map;
-                auto result = Term::match_terms(*args, tuple, empty_map);
-                if (result.has_value()) {
-                    maps.push_back(result.value());
+            // guard against args being nullptr
+            if (args != nullptr) {
+                for (const auto& var : vars) {
+                    for (const auto& term : *args) {
+                        if (Term::isVar(term) && Term::unvar(term) == var) {
+                            pdt_vars.push_back(var);
+                        }
+                    }
+                }
+                
+                for (const auto& tuple : ap_lookup[pred]) {
+                    // Arity check: only match tuples with correct arity
+                    if (tuple.size() != expected_arity) continue;
+                    
+                    std::unordered_map<std::string, Dom> empty_map;
+                    auto result = Term::match_terms(*args, tuple, empty_map);
+                    if (result.has_value()) {
+                        maps.push_back(result.value());
+                    }
                 }
             }
             
             
-            if (!vars.empty()) {
-                auto pdt = Pdt::pdt_of(vars, maps);
+            if (!pdt_vars.empty() && ap_lookup[pred].size() > 0) {
+                auto pdt = Pdt::pdt_of(pdt_vars, maps);
             
                 //// From pdt_test.cpp (old file)
                 //std::cout << "\n=== PDT for predicate " << pred << " ===\n";
@@ -120,11 +125,21 @@ struct Event {
                 //std::cout << "=== End PDT ===\n";
                 
                 pdt_list[pred] = std::optional<Pdt::PdtT<int>>(pdt);  // DELETE LATER, JUST FOR TESTING
+                return pdt;
             }
             
-            return !ap_lookup[pred].empty() ? 1 : 0;
+            // For propositional atoms, check if any tuple has correct arity
+            bool has_matching_arity = false;
+            for (const auto& tuple : ap_lookup[pred]) {
+                if (tuple.size() == expected_arity) {
+                    has_matching_arity = true;
+                    break;
+                }
+            }
+            
+            return Pdt::Leaf(has_matching_arity ? 1 : 0);
         } else {
-            return c == pred_name[0];
+            return Pdt::Leaf(c == pred_name[0] ? 1 : 0);
         }
     }
 };
@@ -178,7 +193,7 @@ public:
     }
 
     Event *open_handle() override {
-        return new Event(trie->cnt, trie->vars);
+        return new Event(trie->cnt);
     }
     void read_handle(Event *e) override {
         CHECK(e != NULL);
@@ -304,7 +319,7 @@ public:
     }
 
     Event *open_handle() override {
-        return new Event(0, std::vector<std::string>());
+        return new Event(0);
     }
     void read_handle(Event *e) override {
         CHECK(e != NULL);
