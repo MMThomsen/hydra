@@ -84,10 +84,10 @@ public:
         std::pair<DFA *, MH_FW *> icalp = createMH<MH_FW>(f->r, input_reader, vars);
         mon = new FwMonitor(f->from, f->to, icalp.first, icalp.second);
     }
-    void visit(ExistsFormula *f) {  // Added
-        // Placeholder 
-        f->f->accept(*this);  // Added
-    }  // Added
+    void visit(ExistsFormula *f) {
+        // EXISTS is always non-temporal (first-order logic)
+        mon = new NonTempMonitor(f, input_reader, input_reader->open_handle());
+    }
 };
 
 class CollectVisitor : public RegexVisitor {

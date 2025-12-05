@@ -32,16 +32,13 @@ struct Event {
     int c;
     int ap_cnt;
     vector<vector<vector<Dom>>> ap_lookup;  // [pred_id][tuple_index][arg_position]
-    mutable vector<std::optional<Pdt::PdtT<int>>> pdt_list;
 
     //Event(int ap_cnt = 0) : pos(0), ts(0), tp(-1), eof(0), c(-1), ap_cnt(ap_cnt), ap_lookup(ap_cnt) {}
     Event(int ap_cnt) : pos(0), ts(0), tp(-1), eof(0), c(-1), ap_cnt(ap_cnt) {
         ap_lookup.resize(ap_cnt);
-        pdt_list.resize(ap_cnt); // DELETE LATER, JUST FOR TESTING
     }
-    
-    // DELETE pdt_list AFTER TESTING
-    Event(const Event *e) : pos(e->pos), ts(e->ts), tp(e->tp), eof(e->eof), c(e->c), ap_cnt(e->ap_cnt), ap_lookup(e->ap_lookup), pdt_list(e->pdt_list) {}
+
+    Event(const Event *e) : pos(e->pos), ts(e->ts), tp(e->tp), eof(e->eof), c(e->c), ap_cnt(e->ap_cnt), ap_lookup(e->ap_lookup) {}
     bool operator<(const Event &e) const {
         return c < e.c || (c == e.c && ap_lookup < e.ap_lookup);
     }
@@ -124,7 +121,6 @@ struct Event {
                 //print_pdt(pdt, "  ", 0);
                 //std::cout << "=== End PDT ===\n";
                 
-                pdt_list[pred] = std::optional<Pdt::PdtT<int>>(pdt);  // DELETE LATER, JUST FOR TESTING
                 return pdt;
             }
             
@@ -211,11 +207,6 @@ public:
         e->ts = ts;
         e->tp++;
 
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        e->pdt_list.clear();           // Remove all PDTs
-        e->pdt_list.resize(e->ap_cnt);
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        //for (int i = 0; i < e->ap_cnt; i++) e->ap_lookup[i] = 0;
         for (int i = 0; i < e->ap_cnt; i++) {
             e->ap_lookup[i].clear();  // Clear tuple list for each predicate
         }

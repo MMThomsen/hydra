@@ -1,0 +1,4 @@
+@0 q(Alice,5) q(Alice,10)
+@1 q(Bob,3) q(Charlie,5)
+@2 q(Dave,7)
+@3 q(Eve,2) q(Eve,4) q(Eve,6)

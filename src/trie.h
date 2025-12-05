@@ -29,12 +29,10 @@ struct TrieNode {
 struct Trie {
     TrieNode<int> root;
     int cnt = 0;
-    std::vector<std::string> vars;
 
     Trie() : root(-1) {}
 
     int getOrAdd(const char *s);
-    std::vector<Term>* addVars(std::vector<Term> *args);
 };
 
 extern Trie trie;

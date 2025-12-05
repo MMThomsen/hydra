@@ -1,0 +1,1 @@
+EXISTS r. EXISTS s. p(x,r,s)

@@ -22,19 +22,3 @@ int Trie::getOrAdd(const char *s)
 
     return cur->value;
 }
-
-std::vector<Term>* Trie::addVars(std::vector<Term> *args)
-{
-    if (args != nullptr) {
-        for (const auto& term : *args) {
-            if (Term::isVar(term)) {
-                std::string var_name = Term::unvar(term);
-                // Add only if not already present
-                if (std::find(vars.begin(), vars.end(), var_name) == vars.end()) {
-                    vars.push_back(var_name);
-                }
-            }
-        }
-    }
-    return args;
-}

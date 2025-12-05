@@ -1,0 +1,4 @@
+@0 p(Alice,5,10)
+@1 p(Bob,3,7) p(Bob,4,8)
+@2 q(Charlie,2,6)
+@3 p(Dave,1,2) p(Dave,3,4) p(Dave,5,6)

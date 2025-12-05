@@ -380,3 +380,165 @@ Result:
 1:0 false
 2:0 false
 3:0 false
+
+================================================================================
+TEST 15: Simple EXISTS quantification
+================================================================================
+Command:
+./hydra ./examples/test_exists_simple.mdl ./examples/test_exists_simple.log
+
+Formula:
+EXISTS r. q(x,r)
+
+Log:
+@0 q(Alice,5)
+@1 q(Bob,10) q(Bob,20)
+@2 p(Charlie,7)
+@3 q(Dave,3) q(Dave,8) q(Eve,12)
+
+Expected Results:
+@0: TRUE  (x=Alice: ∃r. q(Alice,r) satisfied by q(Alice,5))
+@1: TRUE  (x=Bob: ∃r. q(Bob,r) satisfied by q(Bob,10) or q(Bob,20))
+@2: FALSE (no q predicates, only p(Charlie,7))
+@3: TRUE  (x=Dave: ∃r. q(Dave,r) satisfied, also x=Eve: ∃r. q(Eve,r) satisfied)
+
+Result:
+0:0 true
+1:0 true
+2:0 false
+3:0 true
+
+================================================================================
+TEST 16: EXISTS with AND - variable binding through EXISTS
+================================================================================
+Command:
+./hydra ./examples/test_exists_and.mdl ./examples/test_exists_and.log
+
+Formula:
+p(x,y) AND EXISTS r. q(y,r)
+
+Log:
+@0 p(Alice,5) q(5,10)
+@1 p(Bob,3) q(4,8)
+@2 p(Alice,7) q(7,15) q(7,20)
+@3 p(Charlie,2)
+
+Expected Results:
+@0: TRUE  (x=Alice,y=5: p(Alice,5) AND ∃r. q(5,r) satisfied by q(5,10))
+@1: FALSE (x=Bob,y=3: p(Bob,3) but no q(3,r) exists - q has (4,8) not (3,*))
+@2: TRUE  (x=Alice,y=7: p(Alice,7) AND ∃r. q(7,r) satisfied by q(7,15) or q(7,20))
+@3: FALSE (x=Charlie,y=2: p(Charlie,2) but no q(2,r) exists)
+
+Result:
+0:0 true
+1:0 false
+2:0 true
+3:0 false
+
+================================================================================
+TEST 17: EXISTS with complex subformula - intermediate variable binding
+================================================================================
+Command:
+./hydra ./examples/test_exists_complex.mdl ./examples/test_exists_complex.log
+
+Formula:
+EXISTS r. (p(x,r) AND q(r,y))
+
+Log:
+@0 p(Alice,5) q(5,Bob)
+@1 p(Charlie,3) q(4,Dave)
+@2 p(Eve,7) q(7,Frank) p(Eve,8) q(8,Frank)
+@3 p(Alice,10) q(10,Bob) q(10,Charlie)
+
+Expected Results:
+@0: TRUE  (x=Alice,y=Bob: ∃r. (p(Alice,r) AND q(r,Bob)) satisfied by r=5)
+@1: FALSE (x=Charlie,y=Dave: need r where p(Charlie,r) AND q(r,Dave), but p has r=3 and q has r=4)
+@2: TRUE  (x=Eve,y=Frank: ∃r. (p(Eve,r) AND q(r,Frank)) satisfied by r=7 or r=8)
+@3: TRUE  (x=Alice,y=Bob: ∃r. (p(Alice,r) AND q(r,Bob)) satisfied by r=10; also y=Charlie works)
+
+Result:
+0:0 true
+1:0 false
+2:0 true
+3:0 true
+
+================================================================================
+TEST 18: Nested EXISTS quantification
+================================================================================
+Command:
+./hydra ./examples/test_exists_nested.mdl ./examples/test_exists_nested.log
+
+Formula:
+EXISTS r. EXISTS s. p(x,r,s)
+
+Log:
+@0 p(Alice,5,10)
+@1 p(Bob,3,7) p(Bob,4,8)
+@2 q(Charlie,2,6)
+@3 p(Dave,1,2) p(Dave,3,4) p(Dave,5,6)
+
+Expected Results:
+@0: TRUE  (x=Alice: ∃r.∃s. p(Alice,r,s) satisfied by r=5,s=10)
+@1: TRUE  (x=Bob: ∃r.∃s. p(Bob,r,s) satisfied by multiple combinations)
+@2: FALSE (no p predicates, only q(Charlie,2,6))
+@3: TRUE  (x=Dave: ∃r.∃s. p(Dave,r,s) satisfied by multiple combinations)
+
+Result:
+0:0 true
+1:0 true
+2:0 false
+3:0 true
+
+================================================================================
+TEST 19: EXISTS with OR - disjunction inside quantification
+================================================================================
+Command:
+./hydra ./examples/test_exists_or.mdl ./examples/test_exists_or.log
+
+Formula:
+EXISTS r. (p(x,r) OR q(y,r))
+
+Log:
+@0 p(Alice,5) q(Bob,10)
+@1 p(Charlie,3)
+@2 q(Dave,7)
+@3 
+
+Expected Results:
+@0: TRUE  (x=Alice,y=Bob: ∃r. (p(Alice,r) OR q(Bob,r)) satisfied - p(Alice,5) gives r=5, q(Bob,10) gives r=10)
+@1: TRUE  (x=Charlie: ∃r. p(Charlie,r) satisfied by r=3, regardless of y)
+@2: TRUE  (y=Dave: ∃r. q(Dave,r) satisfied by r=7, regardless of x)
+@3: FALSE (no predicates at all)
+
+Result:
+0:0 true
+1:0 true
+2:0 true
+3:0 false
+
+================================================================================
+TEST 20: Negated EXISTS (universal quantification pattern)
+================================================================================
+Command:
+./hydra ./examples/test_exists_negation.mdl ./examples/test_exists_negation.log
+
+Formula:
+NOT EXISTS r. q(x,r)
+
+Log:
+@0 q(Alice,5)
+@1 p(Bob,10)
+@2 q(Charlie,3) q(Charlie,7)
+@3 
+
+Expected Results:
+@0: FALSE (x=Alice: ∃r. q(Alice,r) is true (r=5), so negation is false)
+@1: TRUE  (no q predicates for any x, so ∃r. q(x,r) is false, negation is true)
+@2: FALSE (x=Charlie: ∃r. q(Charlie,r) is true (r=3 or r=7), so negation is false)
+@3: TRUE  (no predicates at all, so ∃r. q(x,r) is false for all x, negation is true)
+
+Result:
+0:0 false
+1:0 true
+2:0 false
+3:0 true

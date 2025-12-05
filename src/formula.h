@@ -228,6 +228,7 @@ struct Formula {
     virtual void accept(FormulaVisitor &v) = 0;
 
     virtual bool equal(const Formula *f) const = 0;
+
     virtual bool equalBool(const BoolFormula *f) const {
         return false;
     }
@@ -261,9 +262,9 @@ struct Formula {
     virtual bool equalFw(const FwFormula *f) const {
         return false;
     }
-    virtual bool equalExists(const ExistsFormula *f) const {  // Added
-        return false;  // Added
-    }  // Added
+    virtual bool equalExists(const ExistsFormula *f) const { 
+        return false; 
+    } 
 };
 
 struct BoolFormula : Formula {
@@ -779,16 +780,133 @@ struct FwFormula : Formula {
     }
 };
 
-struct ExistsFormula : Formula {  // Added
-    const char *pred_name;  // Added
-    Formula *f;  // Added
-    int var_owner;  // Added
+struct ExistsFormula : Formula {
+    const char *pred_name;
+    Formula *f;
 
-    ExistsFormula(const char *pred_name, Formula *f, int var_owner = 0)  // Added
-        : Formula(f->is_temporal), pred_name(pred_name), f(f), var_owner(var_owner) {}  // Added
+    ExistsFormula(const char *pred_name, Formula *f)
+        : Formula(f->is_temporal), pred_name(pred_name), f(f) {}
     
-    void accept(FormulaVisitor &v) override { v.visit(this); }  // Added
-    bool equal(const Formula *f) const override { return false; }  // Added
-};  // Added
+    ~ExistsFormula() {
+        if (f != NULL) delete f;
+    }
+    
+    void accept(FormulaVisitor &v) override { 
+        v.visit(this); 
+    }
+    
+    bool equal(const Formula *f) const override { 
+        return f->equalExists(this); 
+    }
+    
+    bool equalExists(const ExistsFormula *sub) const override {
+        return f->equal(sub->f) && strcmp(pred_name, sub->pred_name) == 0;
+    }
+    
+    std::vector<std::string> free_variables() const override {
+        auto child_vars = f->free_variables();
+        std::vector<std::string> vars;
+        for (const auto& var : child_vars) {
+            if (var != std::string(pred_name)) {
+                vars.push_back(var);
+            }
+        }
+        return vars;
+    }
+    
+    Pdt::PdtT<bool> eval(const Event *e, const std::vector<std::string>& vars) const override {
+        //std::cout << "\n ####################################################### \n" << std::flush;
+        //std::cout << "\n=== ExistsFormula::eval() - Timestamp: " << e->ts << " ===\n" << std::flush;
+        //std::cout << "Quantified variable: " << pred_name << "\n" << std::flush;
+        //std::cout << "Parent vars: [" << std::flush;
+        //for (size_t i = 0; i < vars.size(); ++i) {
+        //    if (i > 0) std::cout << ", ";
+        //    std::cout << vars[i];
+        //}
+        //std::cout << "]\n" << std::flush;
+        //std::cout << " ####################################################### \n" << std::flush;
+        
+        // Build local variable order: [r, ...parent_vars]
+        std::vector<std::string> local_vars;
+        local_vars.push_back(std::string(pred_name));
+        local_vars.insert(local_vars.end(), vars.begin(), vars.end());
+        
+        //std::cout << "Local vars: [";
+        //for (size_t i = 0; i < local_vars.size(); ++i) {
+        //    if (i > 0) std::cout << ", ";
+        //    std::cout << local_vars[i];
+        //}
+        //std::cout << "]\n";
+        
+        // Evaluate subformula with local vars
+        Pdt::PdtT<bool> local_pdt = f->eval(e, local_vars);
+        
+        // Print PDT after subformula evaluation
+        //std::cout << "\nPDT AFTER subformula evaluation (before EXISTS processing):\n";
+        auto bool_printer = [](const std::string& indent, bool val) -> std::string {
+            return indent + (val ? "TRUE" : "FALSE");
+        };
+        //std::cout << Pdt::to_string(bool_printer, "", local_pdt) << "\n";
+        
+        // Process the PDT to remove the quantified variable
+        std::function<Pdt::PdtT<bool>(const Pdt::PdtT<bool>&)> process;
+        process = [&](const Pdt::PdtT<bool>& pdt) -> Pdt::PdtT<bool> {
+            if (Pdt::isleaf(pdt)) {
+                return pdt;
+            }
+            
+            if (Pdt::isnode(pdt)) {
+                const auto& var_name = Pdt::var(pdt);
+                const auto& part = Pdt::part(pdt);
+                
+                if (var_name == std::string(pred_name)) {
+                    // Quantified variable: collect all explicit branches and OR them
+                    std::vector<Pdt::PdtT<bool>> branches_to_or;
+                    for (const auto& [subset, sub_pdt] : part) {
+                        if (Setc::isComplement(subset)) continue;
+                        branches_to_or.push_back(process(sub_pdt));
+                    }
+                    
+                    // Handle edge cases
+                    if (branches_to_or.empty()) {
+                        return Pdt::Leaf<bool>(false);
+                    }
+                    
+                    if (branches_to_or.size() == 1) {
+                        return branches_to_or[0];
+                    }
+                    
+                    // OR all branches together using applyN
+                    auto or_all = [](const std::vector<bool>& values) -> bool {
+                        for (bool v : values) {
+                            if (v) return true;
+                        }
+                        return false;
+                    };
+                    
+                    return Pdt::applyN<bool, bool>(vars, or_all, branches_to_or);
+                } else {
+                    // Other variable: preserve structure
+                    Part::PartT<Pdt::PdtT<bool>> new_part;
+                    for (const auto& [subset, sub_pdt] : part) {
+                        new_part.push_back({subset, process(sub_pdt)});
+                    }
+                    return Pdt::Node<bool>(var_name, new_part);
+                }
+            }
+            
+            return Pdt::Leaf<bool>(false);
+        };
+        
+        auto result = process(local_pdt);
+        
+        // Print PDT after EXISTS processing
+        //std::cout << "\nPDT AFTER EXISTS processing:\n";
+        //std::cout << Pdt::to_string(bool_printer, "", result) << "\n";
+        //std::cout << "=== End ExistsFormula::eval() ===\n\n";
+        
+        return result;
+    }
+};
 
 #endif /* __FORMULA_H__ */
