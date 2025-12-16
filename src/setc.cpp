@@ -5,9 +5,8 @@
 #include <algorithm>
 #include <iterator>
 
-// ===== finite-set helpers on SetT (private) =====
 static Setc::SetT set_inter(const Setc::SetT& a, const Setc::SetT& b) {
-    Setc::SetT out(a.key_comp()); // same comparator (Dom::Less)
+    Setc::SetT out(a.key_comp());
     std::set_intersection(
         a.begin(), a.end(),
         b.begin(), b.end(),
@@ -40,7 +39,6 @@ static Setc::SetT set_diff(const Setc::SetT& a, const Setc::SetT& b) {
 }
 
 
-// ===== construction =====
 Setc::Setc() : type_(sType::Finite), s_() {}
 
 Setc Setc::Finite(SetT s) { return Setc{ sType::Finite, std::move(s) }; }
@@ -50,7 +48,6 @@ Setc Setc::Complement(SetT s) { return Setc{ sType::Complement, std::move(s) }; 
 Setc Setc::univ() { return Complement(SetT{}); }
 
 
-// ===== predicates / queries =====
 bool Setc::isFinite(const Setc& x) noexcept { return x.type_ == sType::Finite; }
 
 bool Setc::isComplement(const Setc& x) noexcept { return x.type_ == sType::Complement; }
@@ -63,7 +60,6 @@ bool Setc::equal(const Setc& a, const Setc& b) noexcept {
     return a.type_ == b.type_ && a.s_ == b.s_;
 }
 
-// ===== set algebra =====
 Setc Setc::add(const Setc& x, const Dom& v) {
     SetT s = x.s_;
     if (x.type_ == sType::Finite) {
@@ -117,13 +113,11 @@ Setc Setc::diff(const Setc& a, const Setc& b) {
 }
 
 
-// ===== selections =====
 std::optional<Dom> Setc::min_elt(const Setc& x) {
     if (x.type_ != sType::Finite || x.s_.empty()) return std::nullopt;
     return *x.s_.begin();
 }
 
-// pick witnesses for complements (avoid excluded finite set)
 static Dom pick_int(const Setc::SetT& excl) {
     if (!excl.count(Dom::Int(0))) return Dom::Int(0);
     for (int k=1;;++k){ if(!excl.count(Dom::Int(k)))return Dom::Int(k);

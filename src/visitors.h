@@ -85,7 +85,7 @@ public:
         mon = new FwMonitor(f->from, f->to, icalp.first, icalp.second);
     }
     void visit(ExistsFormula *f) {
-        // EXISTS is always non-temporal (first-order logic)
+        // Add temporal ExistsMonitor in monitor
         mon = new NonTempMonitor(f, input_reader, input_reader->open_handle());
     }
 };
@@ -281,9 +281,9 @@ public:
         AtomRegexVisitor v(atoms);
         f->r->accept(v);
     }
-    void visit(ExistsFormula *f) {  // Added
-        f->f->accept(*this);  // Added
-    }  // Added
+    void visit(ExistsFormula *f) { 
+        f->f->accept(*this);
+    }
 };
 
 class PrintRegexVisitor : public RegexVisitor {
@@ -399,11 +399,11 @@ public:
         f->r->accept(v);
         fprintf(out, ")");
     }
-    void visit(ExistsFormula *f) {  // Added
-        fprintf(out, "(EXISTS %s. ", f->pred_name);  // Added
-        f->f->accept(*this);  // Added
-        fprintf(out, ")");  // Added
-    }  // Added
+    void visit(ExistsFormula *f) { 
+        fprintf(out, "(EXISTS %s. ", f->pred_name);
+        f->f->accept(*this);
+        fprintf(out, ")");
+    }
 };
 
 class PrintReelayFormulaVisitor : public FormulaVisitor {
@@ -464,9 +464,9 @@ public:
     void visit(FwFormula *f) {
         CHECK(0);
     }
-    void visit(ExistsFormula *f) {  // Added
-        CHECK(0);  // Added 
-    }  // Added
+    void visit(ExistsFormula *f) {
+        CHECK(0);
+    }
 };
 
 void print_fmla_hydra(const char *fname, Formula *fmla);

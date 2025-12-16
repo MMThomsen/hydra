@@ -22,7 +22,7 @@ public:
 
     virtual ~Monitor() {}
     virtual Monitor *clone() = 0;
-    BooleanVerdict step(const std::vector<std::string>& vars) { //should be pdt<bool> verdict
+    BooleanVerdict step(const std::vector<std::string>& vars) {
         if (eof) {
             throw EOL();
         } else {
@@ -53,61 +53,8 @@ public:
             return v ? TRUE : FALSE;
         };
         Pdt::PdtT<Boolean> pb = Pdt::apply1<bool, Boolean>(vars, do_boolean, b);
-
-        auto leaf_identity = [](Boolean b) -> Boolean { return b; };
-        auto check_any_true = [](const Part::PartT<Boolean>& part) -> Boolean {
-            // Return TRUE if any element in the partition is TRUE
-            for (const auto& [sub, val] : part) {
-                if (val == TRUE) return TRUE;
-            }
-            return FALSE;
-        };
         
-        // Helper function to print a Boolean PDT
-        std::function<void(const Pdt::PdtT<Boolean>&, const std::string&, int)> print_pdt;
-        print_pdt = [&](const Pdt::PdtT<Boolean>& p, const std::string& indent, int depth) {
-            if (Pdt::isleaf(p)) {
-                std::cout << indent << "Leaf(" << (Pdt::unleaf(p) == TRUE ? "TRUE" : "FALSE") << ")\n";
-            } else if (Pdt::isnode(p)) {
-                std::cout << indent << "Node(\"" << Pdt::var(p) << "\", [\n";
-                const auto& part = Pdt::part(p);
-                for (size_t i = 0; i < part.size(); ++i) {
-                    const auto& [sub, sub_pdt] = part[i];
-                    std::cout << indent << "  (" << Setc::to_string(sub) << ",\n";
-                    print_pdt(sub_pdt, indent + "    ", depth + 1);
-                    std::cout << indent << "  )";
-                    if (i < part.size() - 1) std::cout << ",";
-                    std::cout << "\n";
-                }
-                std::cout << indent << "])\n";
-            }
-        };
-        
-        // Simple recursive function to check if any leaf in PDT is TRUE
-        // Only check explicit (non-complement) branches
-        std::function<bool(const Pdt::PdtT<Boolean>&)> has_true_leaf;
-        has_true_leaf = [&](const Pdt::PdtT<Boolean>& pdt) -> bool {
-            if (Pdt::isleaf(pdt)) {
-                return Pdt::unleaf(pdt) == TRUE;
-            } else if (Pdt::isnode(pdt)) {
-                const auto& part = Pdt::part(pdt);
-                for (const auto& [sub, sub_pdt] : part) {
-                    // Skip complement branches - only check explicit domain values
-                    if (Setc::isComplement(sub)) continue;
-                    
-                    if (has_true_leaf(sub_pdt)) {
-                        return true;
-                    }
-                }
-                return false;
-            }
-            return false;
-        };
-        
-        Boolean result = has_true_leaf(pb) ? TRUE : FALSE;
-        
-        return BooleanVerdict(handle->ts, result);
-        //return BooleanVerdict(handle->ts, b ? TRUE : FALSE); // change true to / last part, to return a Pdt::PdtT<Boolean>
+        return BooleanVerdict(handle->ts, pb, vars);
     }
 };
 
@@ -119,14 +66,14 @@ class LastReader {
 
 public:
     int eof;
-    std::vector<vector<int> > sub_es; //should become a vector of pdt<int>
+    std::vector<std::vector<Pdt::PdtT<Boolean>>> sub_es;
 
     size_t buf_len, buf_len_mask;
     size_t buf_beg, buf_end;
 
     LastReader(const vector<Formula *> &fmla, InputReader *input_reader, Event *handle, const std::vector<Monitor *> &sub_mon, size_t buf_len) : fmla(fmla), input_reader(input_reader), handle(handle), sub_mon(sub_mon), eof(0), buf_len(buf_len), buf_len_mask((1 << buf_len) - 1) {
         sub_es.resize(1 << buf_len);
-        for (size_t i = 0; i < sub_es.size(); i++) sub_es[i].resize(fmla.size());
+        for (size_t i = 0; i < sub_es.size(); i++) sub_es[i].resize(fmla.size(), Pdt::Leaf(FALSE));
         buf_beg = buf_end = 0;
     }
     LastReader(LastReader *l_reader) : fmla(l_reader->fmla), input_reader(l_reader->input_reader), handle(l_reader->handle->clone()), eof(l_reader->eof), buf_len(l_reader->buf_len), buf_len_mask(l_reader->buf_len_mask), buf_beg(l_reader->buf_beg), buf_end(l_reader->buf_end) {
@@ -151,7 +98,7 @@ public:
         try {
           for (size_t i = 0; i < fmla.size(); i++) {
               BooleanVerdict v = sub_mon[i]->step(vars);
-              sub_es[buf_end_mod][i] = (v.b == TRUE); // Should be able to remove the == (maybe)
+              sub_es[buf_end & buf_len_mask][i] = v.b;
           }
           buf_end++;
         } catch (const EOL &e) {
@@ -176,11 +123,15 @@ protected:
     struct CurEntry {
         DState *q;                                          // current state in the run from dfa->init
         std::optional<std::pair<timestamp, int> > last_sat; // last satisfaction in the run from dfa->init
+        // Before: (no last_sat_bindings field)
+        Pdt::PdtT<Boolean> last_sat_bindings = Pdt::Leaf(FALSE);  // bindings at last satisfaction (NOT USING ANYMORE)
     } cur;
 
     struct QMapEntry {
         DState *q;                                                // used by run_back()
         std::optional<std::pair<timestamp, int> > last_sat = {};  // last satisfaction before end time-point
+        // Before: (no last_sat_bindings field)
+        Pdt::PdtT<Boolean> last_sat_bindings = Pdt::Leaf(FALSE);  // bindings at last satisfaction
         DState *end_q;                                            // state at end time-point
 
         QMapEntry() {}
@@ -196,12 +147,14 @@ protected:
     void rescale_seen() {
         seen.resize(dfa->get_cnt(), -1);
     }
-    vector<int> back_es() { // type should be changed to vector<pdt<<Int>>>
+
+    vector<Pdt::PdtT<Boolean>> back_es() { 
         CHECK(b_reader->buf_beg != b_reader->buf_end || b_reader->eof);
         if (b_reader->buf_beg == b_reader->buf_end) throw EOL();
         return b_reader->sub_es[b_reader->buf_beg & b_reader->buf_len_mask];
     }
-    vector<int> front_es() { // type should be changed to vector<pdt<<Int>>>
+
+    vector<Pdt::PdtT<Boolean>> front_es() {
         if (f_reader == NULL) {
           if (b_reader->eof) throw EOL();
           return b_reader->sub_es[(b_reader->buf_end - 1) & b_reader->buf_len_mask];
@@ -260,7 +213,7 @@ public:
     virtual MH_FW *clone() {
         return new MH_FW(this);
     }
-    BooleanVerdict check_fw(timestamp from, timestamp to) { //
+    BooleanVerdict check_fw(timestamp from, timestamp to) { 
         if (b_head->eof) throw EOL();
         timestamp t = b_head->ts;
         while (!f_head->eof && memR(t, f_head->ts, from, to)) {
@@ -268,21 +221,37 @@ public:
         }
         if (f_head->eof) throw EOL();
         QMapEntry *e = &q_map[q_map_init].second;
-        Boolean b = FALSE;
-        if (e->last_sat && memL(t, e->last_sat->first, from, to)) b = TRUE;
+        Pdt::PdtT<Boolean> b = Pdt::Leaf(FALSE);
+
+        if (e->last_sat && memL(t, e->last_sat->first, from, to)) {
+            b = Pdt::Leaf(TRUE);
+        }
+        
         run_back();
-        return BooleanVerdict(t, b);
+        return BooleanVerdict(t, b, this->vars);
     }
     virtual void run_front() {
         if (f_head->eof) throw EOL();
         timestamp tj = f_head->ts;
         input_reader->read_handle(f_head);
-        vector<int> bj = front_es();
+
+        vector<Pdt::PdtT<Boolean>> bj = front_es();
+        // has_true_leaf(...) is used to collapse the PDT verdict to a single
+        // Boolean: true iff the predicate holds in this event (for a plain
+        // predicate, or for at least one variable binding in½ the parametric case).
+        // Such that bj_int represent whether the predicate with or without variable bindings
+        // has been observed in the log.
+        vector<int> bj_int(bj.size());
+        for (size_t i = 0; i < bj.size(); i++) {
+            bj_int[i] = has_true_leaf(bj[i]) ? 1 : 0;
+        }
+
         run_ms_front(vars);
 
         for (size_t i = 0; i < q_map.size(); i++) {
             QMapEntry *e = &q_map[i].second;
-            e->end_q = dfa->run(e->end_q, bj);
+            e->end_q = dfa->run(e->end_q, bj_int);
+            
             if (e->end_q->accept) e->last_sat = std::make_pair(tj, front_tp);
         }
         front_tp++;
@@ -292,11 +261,15 @@ public:
         timestamp ti = b_head->ts;
         input_reader->read_handle(b_head);
 
-        const vector<int> bi = back_es();
+        const vector<Pdt::PdtT<Boolean>> bi = back_es();
+        vector<int> bi_int(bi.size());
+        for (size_t i = 0; i < bi.size(); i++) {
+            bi_int[i] = has_true_leaf(bi[i]) ? 1 : 0;
+        }
         run_ms_back(vars);
 
         for (size_t i = 0; i < q_map.size(); i++) {
-            q_map[i].first = dfa->run(q_map[i].first, bi);
+            q_map[i].first = dfa->run(q_map[i].first, bi_int);
             q_map[i].second.q = q_map[i].first; // initialize a fresh run
             if (q_map[i].second.last_sat && q_map[i].second.last_sat->second == back_tp) {
                 q_map[i].second.last_sat = {};
@@ -352,7 +325,7 @@ public:
             CHECK(!c_head->eof);
             timestamp tcur = c_head->ts;
             input_reader->read_handle(c_head);
-            vector<int> b_cur;
+            vector<Pdt::PdtT<Boolean>> b_cur;
             if (cur_tp < b_reader->buf_end - 1) {
                 b_cur = b_reader->sub_es[cur_tp & b_reader->buf_len_mask];
             } else {
@@ -366,11 +339,21 @@ public:
               c_reader->run(vars);
             }
 
-            cur.q = dfa->run(cur.q, b_cur);
+            // has_true_leaf(...) is used to collapse the PDT verdict to a single
+            // Boolean: true iff the predicate holds in this event (for a plain
+            // predicate, or for at least one variable binding in the parametric case).
+            // Such that bj_cur_int represent whether the predicate with or without variable bindings
+            // has been observed in the log.
+            vector<int> b_cur_int(b_cur.size());
+            for (size_t i = 0; i < b_cur.size(); i++) {
+                b_cur_int[i] = has_true_leaf(b_cur[i]) ? 1 : 0;
+            }
+
+            cur.q = dfa->run(cur.q, b_cur_int);
             if (cur.q->accept) cur.last_sat = std::make_pair(tcur, cur_tp);
 
             for (size_t i = 0; i < q_map.size(); i++) {
-                q_map[i].second.q = dfa->run(q_map[i].second.q, b_cur);
+                q_map[i].second.q = dfa->run(q_map[i].second.q, b_cur_int);
             }
 
             cur_tp++;
@@ -413,21 +396,25 @@ public:
         while (back_tp < front_tp && memL(b_head->ts, t, from, to)) {
             run_back();
         }
-        Boolean b = FALSE;
-        for (size_t i = 0; b == FALSE && i < e_map.size(); i++) {
-            if (e_map[i].first->accept && memR(e_map[i].second.first, t, from, to)) b = TRUE;
+        Pdt::PdtT<Boolean> b = Pdt::Leaf(FALSE);
+        for (size_t i = 0; has_true_leaf(b) == false && i < e_map.size(); i++) {
+            if (e_map[i].first->accept && memR(e_map[i].second.first, t, from, to)) b = Pdt::Leaf(TRUE);
         }
-        return BooleanVerdict(t, b);
+        return BooleanVerdict(t, b, this->vars);
     }
     virtual void run_front() override {
         CHECK(!q_map.empty());
 
         if (f_head->eof) throw EOL();
-        vector<int> bj = front_es();
+        vector<Pdt::PdtT<Boolean>> bj = front_es();
+        vector<int> bj_int(bj.size());
+        for (size_t i = 0; i < bj.size(); i++) {
+            bj_int[i] = has_true_leaf(bj[i]) ? 1 : 0;
+        }
 
         size_t idx = 0;
         for (size_t i = 0; i < e_map.size(); i++) {
-            e_map[i].first = dfa->run(e_map[i].first, bj);
+            e_map[i].first = dfa->run(e_map[i].first, bj_int);
         }
         rescale_seen();
         for (size_t i = 0; i < e_map.size(); i++) {
@@ -621,12 +608,13 @@ class UntilMonitor : public Monitor {
     InputReader *input_reader;
     Event *front, *back;
     int c;
-    std::optional<std::pair<timestamp, std::pair<Boolean, Boolean> > > z;
+    std::optional<std::pair<timestamp, std::pair<Pdt::PdtT<Boolean>, Pdt::PdtT<Boolean>>>> z;
 
     bool loopCondUntil() const {
         if (c != 0) {
             if (z) {
-                if ((z->second.second && memL(back->ts, z->first, from, to)) || !z->second.first) return false;
+                // Orignal: if ((z->second.second && memL(back->ts, z->first, from, to)) || !z->second.first) return false;
+                if (((has_true_leaf(z->second.second) ? TRUE : FALSE) && memL(back->ts, z->first, from, to)) || ((!has_true_leaf(z->second.first)) ? TRUE : FALSE)) return false;
             }
         }
         if (front->eof) return false;

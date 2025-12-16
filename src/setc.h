@@ -13,34 +13,38 @@ struct Setc {
 
     enum class sType { Finite, Complement };
 
-    // ---- construction ----
     Setc();                              
     static Setc Finite(SetT s);     
     static Setc Complement(SetT s);        
     static Setc univ();             
 
-    // ---- predicates / queries ----
     static bool isFinite     (const Setc& x) noexcept;
     static bool isComplement (const Setc& x) noexcept;
     static bool isEmpty      (const Setc& x) noexcept;
     static int  length       (const Setc& x) noexcept;
     static bool equal        (const Setc& a, const Setc& b) noexcept;
 
-    // ---- set algebra ----
     static Setc add   (const Setc& x, const Dom& v);
     static Setc inter (const Setc& a, const Setc& b);
     static Setc union_(const Setc& a, const Setc& b);
     static Setc diff  (const Setc& a, const Setc& b);
 
-    // ---- selections ----
     static std::optional<Dom> min_elt(const Setc& x);        
     static Dom                some_elt(Dom::tt ty, const Setc& x); 
 
-    // ---- conversions / pretty ----
     static std::vector<Dom> to_list(const Setc& x); 
     static std::string      to_json  (const Setc& x);
     static std::string      to_string(const Setc& x);
     static std::string      to_latex (const Setc& x);
+
+    bool operator<(const Setc& other) const {
+        if (type_ != other.type_) return type_ < other.type_;
+        return s_ < other.s_;
+    }
+    
+    bool operator==(const Setc& other) const {
+        return type_ == other.type_ && s_ == other.s_;
+    }
 
 private:
 

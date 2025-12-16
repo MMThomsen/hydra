@@ -256,7 +256,6 @@ struct Part {
     }
 
     //############################ merge3 #################################
-    // merge3 f p1 p2 p3 = merge2 (fun pt3 f' -> f' pt3) p3 (merge2 f p1 p2)
     template <typename A, typename C, typename F>
     static PartT<C> merge3(F f,
                         const PartT<A>& p1,
@@ -267,8 +266,6 @@ struct Part {
             throw std::invalid_argument("Part::merge3: one of the partitions is empty");
         }
 
-        
-        // Function waiting for v3: g(v3) = f(v1, v2, v3).
         auto p12 = merge2<A, std::function<C(const A&)>>(
             [f](const A& v1, const A& v2) {
                 return [f, v1, v2](const A& v3) -> C {
@@ -284,12 +281,6 @@ struct Part {
             p12, p3);  
     }
     //########################### split_prod ##############################
-    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // DMITRIY: Correct assumption that part can be of type std::vector<std::pair<Sub, std::pair<A,B>>>;
-    // From OCAml i know that the A in this: std::vector<std::pair<Sub, A>>, must be a pair.
-    // From the .mli i can see that for PDT: val split_prod: ('a * 'b) t -> 'a t * 'b t, thus the
-    // possibility of the elements in the pair having different types.
-    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     template <typename A, typename B>
     static std::pair<PartT<A>, PartT<B>> split_prod(const PartT<std::pair<A,B>>& part) {
         auto p1 = Part::map<std::pair<A,B>, A>(part, [](const auto& ab){ return ab.first; });
@@ -310,8 +301,7 @@ struct Part {
         std::size_t width = part.front().second.size();
         subs.reserve(part.size());
         vs.reserve(part.size());
-        // let subs = List.map part ~f:fst in
-        // let vs = List.map part ~f:snd in
+
         for (const auto& [sub, v] : part) {
             if (v.size() != width) {
                 throw std::invalid_argument("Part::split_list: inconsistent payload widths");
@@ -320,7 +310,6 @@ struct Part {
             vs.push_back(v);
         }
 
-        // (List.transpose vs)
         std::vector<std::vector<A>> cols(width, std::vector<A>());
         for (std::size_t j = 0; j < width; ++j) {
             cols[j].reserve(vs.size());
@@ -331,7 +320,6 @@ struct Part {
             }
         }
 
-        // List.zip_exn subs
         std::vector<PartT<A>> out; out.reserve(width);
         for (std::size_t j = 0; j < width; ++j) {
             PartT<A> pj; pj.reserve(subs.size());
@@ -356,7 +344,7 @@ struct Part {
 
             for (auto it = acc.begin(); it != acc.end(); ++it) {
                 if (p_eq(it->second, v)) {
-                    it->first = Sub::union_(s, it->first); // same as OCaml: union s t
+                    it->first = Sub::union_(s, it->first);
                     return;
                 }
             }
@@ -398,16 +386,6 @@ struct Part {
 
 
     //####################### merge2_dedup ###############################
-    /*
-    ############## Merge2 Code ###################
-    template <typename A, typename B, typename F>
-    static PartT<B> merge2(F f, const PartT<A>& part1, const PartT<A>& part2) {
-
-
-    ########################### dedup ##################################
-     template <typename A, typename P_EQ>
-    static PartT<A> dedup(P_EQ p_eq, const PartT<A>& part) {
-    */
 
 
     template <typename A, typename B, typename P_EQ, typename F>
@@ -416,6 +394,7 @@ struct Part {
         PartT<B> result = Part::dedup(p_eq, merge2_res);
         return result;
     }
+
 
     template <typename A1, typename A2, typename B, typename P_EQ, typename F>
     static PartT<B> merge2_dedup(P_EQ p_eq, F f,
@@ -440,16 +419,6 @@ struct Part {
 
 
     // ####################### split_prod_dedup ###############################
-    /*
-    template <typename A, typename B>
-    static std::pair<PartT<A>, PartT<B>> split_prod(const PartT<std::pair<A,B>>& part) {
-        auto p1 = Part::map<std::pair<A,B>, A>(part, [](const auto& ab){ return ab.first; });
-        auto p2 = Part::map<std::pair<A,B>, B>(part, [](const auto& ab){ return ab.second; });
-        return { std::move(p1), std::move(p2) };
-    }
-        */
-
-
     template <typename A, typename B, typename P_EQ>
     static std::pair<PartT<A>, PartT<B>> split_prod_dedup(P_EQ p_eq, const PartT<std::pair<A,B>>& part) {
         auto [part1, part2] = Part::split_prod<A, B>(part);
@@ -459,10 +428,6 @@ struct Part {
     }
 
     // ####################### split_list_dedup ###############################
-    /*
-    template <typename A>
-    static std::vector<PartT<A>> split_list(const PartT<std::vector<A>>& part) {
-        */
     template <typename A, typename P_EQ>
     static std::vector<PartT<A>> split_list_dedup(P_EQ p_eq, const PartT<std::vector<A>>& part) {
         auto parts = Part::split_list<A>(part);
@@ -477,7 +442,6 @@ struct Part {
 
 
     //####################### sort ###############################
-
     template <typename A>
     static PartT<A> sort(const PartT<A>& part) {
         if (part.empty()) {
@@ -499,36 +463,13 @@ struct Part {
             }    
         );
 
-        // reversing the sorted remainder (Ocaml List.rev)
         std::reverse(remainder.begin(), remainder.end());
         
         out.insert(out.end(), remainder.begin(), remainder.end());
 
         return out;
     }
-    /*####################### join_parts ###############################
-    ______________________________________________________________________
-    OCAML PART:
-          let rec join_parts ps = match ps with 
-            | [] -> trivial []
-            | [p] -> List.map ~f:(fun (sub, x) -> (sub, [x])) p
-            | p :: ps -> merge2 (fun x y -> x :: y) p (join_parts ps)
-    Notes:
-        p = PartT<A> 
-        join_parts ps = PartT<std::vector<A>>
-    ______________________________________________________________________ 
-    merge2 
-    multitype c++:
-        template <typename A1, typename A2, typename B, typename F>
-        static PartT<B> merge2(F f, const PartT<A1>& part1, const PartT<A2>& part2) {
-        }
-    sametype:
-        template <typename A, typename B, typename F>
-        static PartT<B> merge2(F f, const PartT<A>& part1, const PartT<A>& part2) {
-    ______________________________________________________________________ 
-
-    
-    */
+    //####################### join_parts ###############################
     template <typename A>
     static PartT<std::vector<A>> join_parts(const std::vector<PartT<A>>& ps) {
         if (ps.empty()) {
@@ -549,23 +490,15 @@ struct Part {
                 [](const A& x, const std::vector<A>& y) -> std::vector<A> {
                     std::vector<A> result;
                     result.reserve(y.size() + 1);
-                    result.push_back(x);                              // x :: 
-                    result.insert(result.end(), y.begin(), y.end()); // y
+                    result.push_back(x);                               
+                    result.insert(result.end(), y.begin(), y.end());
                     return result;
                 },
                 p, recursive_result);
         }
     }
 
-    /*####################### merge_parts ###############################
-    ______________________________________________________________________
-    OCAML PART:
-        let merge_parts f ps = 
-        let joint_parts = List.map ~f:(fun (sub, xs) -> (sub, f xs)) (join_parts ps) in
-        joint_parts
-
-        val merge_parts : ('a list -> 'b) -> 'a t list -> 'b t
-    */
+    //####################### merge_parts ###############################
 
     template <typename A, typename B, typename F>
     static PartT<B> merge_parts(F f, const std::vector<PartT<A>>& ps) {
@@ -578,8 +511,6 @@ struct Part {
 
 
     //####################### el_to_string ###############################
-    // let el_to_string indent var f (sub, v) =
-    // Printf.sprintf "%s%s ∈ %s\n\n%s" indent (Term.value_to_string var) (Setc.to_string sub) (f v)
     template <typename A, typename F>
     static std::string el_to_string(const std::string& indent, const Term& var, F f, const std::pair<Sub, A>& sub_v) {
         const auto& [sub, v] = sub_v;
@@ -641,13 +572,6 @@ struct Part {
 - split_prod_reduce     : DONE                      (TESTED)
 - split_list_reduce     : DONE                      (TESTED)
 - hide_reduce           : DONE                      (TESTED)
-- fst_leaf              : No Needed (used for agg)
-- to_latex              : Not needed
-- to_light_string       : Not needed
-- hide2                 : Not needed
-- aux                   : Not Needed
-- reorder               : Not Needed
-- fold                  : Not Needed
 */
 
 struct Pdt {
@@ -662,6 +586,14 @@ struct Pdt {
     struct Leaf {
         A value;
         explicit Leaf(A v) : value(std::move(v)) {}
+        
+        bool operator<(const Leaf& other) const {
+            return value < other.value;
+        }
+        
+        bool operator==(const Leaf& other) const {
+            return value == other.value;
+        }
     };
 
     template <typename A>
@@ -670,6 +602,15 @@ struct Pdt {
         Part::PartT<PdtT<A>> part; 
 
         Node(std::string v, Part::PartT<PdtT<A>> p) : x(std::move(v)), part(std::move(p)) {}
+        
+        bool operator<(const Node& other) const {
+            if (x != other.x) return x < other.x;
+            return part < other.part;
+        }
+        
+        bool operator==(const Node& other) const {
+            return x == other.x && part == other.part;
+        }
     };
 
 
@@ -681,14 +622,12 @@ struct Pdt {
 
     
     // ############################# isleaf #################################
-    // not needed, just for easy reading.
     template <typename A>
     static bool isleaf(const PdtT<A>& pdt) {
         return std::holds_alternative<Leaf<A>>(pdt);
     }
 
     // ############################# isnode #################################
-    // not needed, just for easy reading.
     template <typename A>
     static bool isnode(const PdtT<A>& pdt) {
         return std::holds_alternative<Node<A>>(pdt);
@@ -743,25 +682,18 @@ struct Pdt {
     
     template <typename A, typename B, typename F>
     static PdtT<B> apply1(const std::vector<std::string>& vars, F f, const PdtT<A>& pdt) {
-        // Ocaml: | _ , Leaf l -> Leaf (f l)
         if (isleaf(pdt)) {
             const auto& leaf = std::get<Leaf<A>>(pdt);
             return Leaf<B>(f(leaf.value));
         }
-        // OCaml: | z :: vars, Node (x, part)
         if (isnode(pdt) && !vars.empty()) {
-            // vars elements
             const std::string& z = vars.front();
             std::vector<std::string> remainder(vars.begin() + 1, vars.end());
 
-            // node elements
             const auto& x       = Pdt::var(pdt);
             const auto& part    = Pdt::part(pdt);
 
-            //if String.equal x z then Node (x, Part.map part (apply1 vars f))
             if (x == z) {
-            // lambda function for (apply1 vars f) which should be applied
-            // to orignal part .
                 auto new_part = Part::map<PdtT<A>, PdtT<B>>(part, 
                 [&](const PdtT<A>& sub_pdt) -> PdtT<B> {
                     return apply1<A, B, F>(remainder, f, sub_pdt);
@@ -778,8 +710,6 @@ struct Pdt {
 
 
     /* ############################# apply2 #################################
-    !!!! NOTES/TO-DO: FIX std::get<Leaf>
-
     Ocaml:
       let rec apply2 vars f pdt1 pdt2 = match vars, pdt1, pdt2 with
         | _ , Leaf l1, Leaf l2 -> Leaf (f l1 l2)
@@ -798,14 +728,11 @@ struct Pdt {
     */
     template <typename A, typename B, typename C, typename F>
     static PdtT<C> apply2(const std::vector<std::string>& vars, F f, const PdtT<A>& pdt1, const PdtT<B>& pdt2) {
-        // Ocaml: | _ , Leaf l -> Leaf (f l)
         if (isleaf(pdt1) && isleaf(pdt2)) {
             const auto& leaf1 = std::get<Leaf<A>>(pdt1);
             const auto& leaf2 = std::get<Leaf<B>>(pdt2);
             return Leaf<C>(f(leaf1.value, leaf2.value));
         }
-
-        //     | _ , Leaf l1, Node (x, part2) -> Node (x, Part.map part2 (apply1 vars (f l1)))
         if(isleaf(pdt1) && isnode(pdt2)) {
             const auto& l1    = Pdt::unleaf(pdt1);
             const auto& part2 = Pdt::part(pdt2);
@@ -822,7 +749,6 @@ struct Pdt {
             return Pdt::Node<C>(x, new_part);
         }
 
-        //  | _ , Node (x, part1), Leaf l2 -> Node (x, Part.map part1 (apply1 vars (fun l1 -> f l1 l2)))
         if(isnode(pdt1) && isleaf(pdt2)) {
             const auto& x     = Pdt::var(pdt1);
             const auto& part1 = Pdt::part(pdt1);
@@ -840,20 +766,15 @@ struct Pdt {
             return Pdt::Node<C>(x, new_part);
         }
 
-        // OCaml: | z :: vars, Node (x, part)
         if (isnode(pdt1) && isnode(pdt2) && !vars.empty()) {
-            // vars elements
             const std::string& z = vars.front();
             std::vector<std::string> vars_tail(vars.begin() + 1, vars.end());
 
-            // node elements
             const auto& x = Pdt::var(pdt1);
             const auto& part1 = Pdt::part(pdt1);
             const auto& y = Pdt::var(pdt2);
             const auto& part2 = Pdt::part(pdt2);
 
-            //OCAML: if String.equal x z && String.equal y z then
-            //          Node (z, Part.merge2 (apply2 vars f) part1 part2)
             if (x == z && y == z) {
                 auto new_part = Part::merge2<PdtT<A>, PdtT<B>, PdtT<C>>(
                     [&](const PdtT<A>& sub_pdt1, const PdtT<B>& sub_pdt2) -> PdtT<C> {
@@ -862,8 +783,6 @@ struct Pdt {
                     part1, part2);
                 
                 return Pdt::Node<C>(z, new_part);
-            // else (if String.equal x z then
-            //   Node (x, Part.map part1 (fun pdt1 -> apply2 vars f pdt1 (Node (y, part2))))
             } else {
                 if (x == z) {
                     auto new_part = Part::map<PdtT<A>, PdtT<C>>(part1,
@@ -874,8 +793,6 @@ struct Pdt {
                                 });
                             
                             return Pdt::Node<C>(x, new_part);
-                // else (if String.equal y z then
-                //     Node (y, Part.map part2 (apply2 vars f (Node (x, part1))))
                 } else {
                     if (y == z) {
                         auto new_part = Part::map<PdtT<B>, PdtT<C>>(part2,
@@ -969,7 +886,6 @@ struct Pdt {
         }
     }
 
-    // f : vector<PdtT<A>> -> PdtT<B>
     template <typename A, typename B>
     static PdtT<B> papply_list_pdt(
         std::function<PdtT<B>(const std::vector<PdtT<A>>&)> f,
@@ -1025,14 +941,9 @@ struct Pdt {
             return Leaf<B>(f(unleaf_list));
         } else {
 
-        // OCaml: | z :: vars -> 
         const auto& z = vars.front();
         std::vector<std::string> vars_tail(vars.begin() + 1, vars.end()); 
 
-
-        //## Multiple of the below list.map can maybe be done in one for loop -> future improvement #############
-        
-        // OCaml: let f' = papply_list f (List.map ~f:(fun pdt -> if is_leaf pdt then Some (unleaf pdt) else None) pdts) in
         std::vector<std::optional<A>> leaf_optionals;
 
         for (const auto& pdt : pdts) {
@@ -1048,7 +959,6 @@ struct Pdt {
             return Pdt::papply_list<A, B>(f, leaf_optionals, ys_values);
         };
 
-        // OCaml: let nodes = List.filter ~f:(fun pdt -> not (is_leaf pdt)) pdts in
         std::vector<PdtT<A>> nodes;
         nodes.reserve(pdts.size());
         for (const auto& pdt : pdts) {
@@ -1057,7 +967,6 @@ struct Pdt {
             }
         }
 
-        // OCaml: let other_nodes = List.map ~f:(fun pdt -> if String.equal (var pdt) z then None else Some pdt) nodes in
         std::vector<std::optional<PdtT<A>>> other_nodes;
         other_nodes.reserve(nodes.size());
         for (const auto& pdt : nodes) {
@@ -1068,7 +977,6 @@ struct Pdt {
             }
         }
 
-        // OCaml:  let z_parts = List.map (List.filter ~f:(fun pdt -> String.equal (var pdt) z) nodes) ~f:(part)
         std::vector<Part::PartT<PdtT<A>>> z_parts;
         for (const auto& pdt : nodes) {
             if (Pdt::var(pdt) == z) {
@@ -1080,7 +988,6 @@ struct Pdt {
         if (z_parts.empty()) {
             return applyN<A, B>(vars_tail, f_prime, nodes);
         } else {
-            // OCaml: fun pdts -> papply_list (applyN vars f') other_nodes pdts
             auto merge_func = [&](const std::vector<PdtT<A>>& pdts) -> PdtT<B> {
                 auto f_applyN = [&](const std::vector<PdtT<A>>& zs) -> PdtT<B> {
                     std::vector<PdtT<A>> zs_copy = zs;
@@ -1107,18 +1014,6 @@ struct Pdt {
         | Leaf (l1, l2) -> (Leaf l1, Leaf l2)
         | Node (x, part) -> let (part1, part2) = Part.split_prod (Part.map part split_prod) in
                             (Node (x, part1), Node (x, part2))
-
-
-    c++
-        auto [part1, part2] = Part::split_prod<A, B>(part);
-
-
-        template <typename A, typename B>
-        static std::pair<PartT<A>, PartT<B>> split_prod(const PartT<std::pair<A,B>>& part) {
-            auto p1 = Part::map<std::pair<A,B>, A>(part, [](const auto& ab){ return ab.first; });
-            auto p2 = Part::map<std::pair<A,B>, B>(part, [](const auto& ab){ return ab.second; });
-            return { std::move(p1), std::move(p2) };
-    }
     */
     template <typename A, typename B>
     static std::pair<PdtT<A>, PdtT<B>> split_prod(const PdtT<std::pair<A,B>>& pdt) {
@@ -1295,13 +1190,11 @@ struct Pdt {
             const auto& x       = Pdt::var(pdt);
             const auto& part    = Pdt::part(pdt);
 
-            // (Part.map part (reduce p_eq))
             auto mapped_part = Part::map<PdtT<A>, PdtT<A>>(part,
                 [&p_eq](const PdtT<A>& sub_pdt) -> PdtT<A> {
                     return reduce(p_eq, sub_pdt); 
                 });
-
-            //Part.dedup (equal p_eq) (Part.map part (reduce p_eq))
+ 
             auto deduped_part = Part::dedup(
                 [&p_eq](const PdtT<A>& a, const PdtT<A>& b) -> bool {
                     return Pdt::equal(p_eq, a, b);
@@ -1391,17 +1284,7 @@ struct Pdt {
             const auto l2 = Pdt::unleaf(pdt2);
             return Leaf<A>(f(l1, l2));
         } 
-        /*| _ , Leaf l1, Node (x, part2) -> Node (x, Part.map_dedup (equal p_eq) part2 (apply1_reduce p_eq vars (f l1)))
-                                  apply1:   Node (x, Part.map_dedup (equal p_eq) part (apply1_reduce p_eq vars f))
-        auto new_part = Part::map<PdtT<B>, PdtT<C>>(part2,
-                [&](const PdtT<B>& sub_pdt) -> PdtT<C> {
-                    auto partial_f = [&](const B& l2) -> C {
-                        return f(l1, l2);
-                    };
-                    return apply1<B, C>(vars, partial_f, sub_pdt);
-                });
-            
-            return Pdt::Node<C>(x, new_part);*/
+
         if (Pdt::isleaf(pdt1) && Pdt::isnode(pdt2)) {
             const auto& l1 = Pdt::unleaf(pdt1);
             const auto& x = Pdt::var(pdt2);
@@ -1413,20 +1296,14 @@ struct Pdt {
                 },
                 part2,
                 [&](const PdtT<C>& sub_pdt) -> PdtT<A> {
-                    // Create partial function that takes a C and returns an A
                     auto partial_f = [&](const C& l2) -> A {
                         return f(l1, l2);
                     };
-                    // KEEP VERSION IF ERROR:
                     return apply1_reduce<C, A, P_EQ>(p_eq, vars, partial_f, sub_pdt);
                 }
             );
             return Node<A>(x, mapped_deduped);
         }
-
-        /*| _ , Node (x, part1), Leaf l2 -> Node (x, Part.map_dedup (equal p_eq) part1 (apply1_reduce p_eq vars (fun l1 -> f l1 l2)))
-            Same as the previous. Few differen, partial_f now auto partial_f = [&](const B& l1) -> A 
-        */
         if (Pdt::isnode(pdt1) && Pdt::isleaf(pdt2)) {
             const auto& x = Pdt::var(pdt1);
             const auto& part1 = Pdt::part(pdt1);
@@ -1447,37 +1324,16 @@ struct Pdt {
             return Node<A>(x, mapped_deduped);
         }
 
-        /*| z :: vars, Node (x, part1), Node (y, part2) ->
-            if String.equal x z && String.equal y z then
-                Node (z, Part.merge2_dedup (equal p_eq) (apply2_reduce p_eq vars f) part1 part2)
-            else (if String.equal x z then
-                    Node (x, Part.map_dedup (equal p_eq) part1 (fun pdt1 -> apply2_reduce p_eq vars f pdt1 (Node (y, part2))))
-                    else (if String.equal y z then
-                            Node (y, Part.map_dedup (equal p_eq) part2 (apply2_reduce p_eq vars f (Node (x, part1))))
-                        else apply2_reduce p_eq vars f (Node (x, part1)) (Node (y, part2))))
-            | _ -> raise (Invalid_argument "variable list is empty")
-        */
         if (isnode(pdt1) && isnode(pdt2) && !vars.empty()) {
-            // vars elements
             const std::string& z = vars.front();
             std::vector<std::string> vars_tail(vars.begin() + 1, vars.end());
 
-            // node elements
             const auto x        = Pdt::var(pdt1);
             const auto part1    = Pdt::part(pdt1);
             const auto y        = Pdt::var(pdt2);
             const auto part2    = Pdt::part(pdt2);
 
-            /*apply2_reduce:
-                if String.equal x z && String.equal y z then
-                    Node (z, Part.merge2_dedup (equal p_eq) (apply2_reduce p_eq vars f) part1 part2)
-             apply2:
-                if String.equal x z && String.equal y z then
-                    Node (z, Part.merge2 (apply2 vars f) part1 part2)       
-                    
-                    */
             if (x == z && y == z) {
-                // Node (z, Part.merge2_dedup (equal p_eq) (apply2_reduce p_eq vars f) part1 part2)
                 auto merged_deduped = Part::merge2_dedup<PdtT<B>, PdtT<C>, PdtT<A>>(
                     [p_eq](const PdtT<A>& a, const PdtT<A>& b) -> bool {
                         return Pdt::equal(p_eq, a, b);
@@ -1545,18 +1401,10 @@ struct Pdt {
     template <typename A, typename P_EQ>
     static std::pair<Pdt::PdtT<A>, Pdt::PdtT<A>>
     split_prod_reduce(P_EQ p_eq, const Pdt::PdtT<std::pair<A,A>>& pdt) {
-        // Leaf (l1, l2) -> (Leaf l1, Leaf l2)
         if (Pdt::isleaf(pdt)) {
             auto [l1, l2] = Pdt::unleaf(pdt);
             return { Pdt::Leaf<A>(l1), Pdt::Leaf<A>(l2) };
         }
-
-        /*  Node (x, part) ->
-        //   let (part1, part2) =
-        //     Part.split_prod_dedup (equal p_eq)
-        //       (Part.map part (split_prod_reduce p_eq))
-        //   in (Node (x, part1), Node (x, part2))
-        */
         if (Pdt::isnode(pdt)) {
             const auto& x    = Pdt::var(pdt);
             const auto& part = Pdt::part(pdt);
@@ -1608,7 +1456,6 @@ struct Pdt {
             const auto x    = Pdt::var(list_pdt);
             const auto part = Pdt::part(list_pdt);
 
-            // Part.map part (split_list_reduce p_eq)
             auto mapped = Part::map<PdtT<std::vector<A>>, std::vector<PdtT<A>>>(
                 part,
                 [&p_eq](const PdtT<std::vector<A>>& sub) -> std::vector<PdtT<A>> {
@@ -1616,7 +1463,6 @@ struct Pdt {
                 }
             );
 
-            // Part.split_list_dedup (equal p_eq) mapped
             auto parts = Part::split_list_dedup<PdtT<A>>(
                 [&p_eq](const PdtT<A>& u, const PdtT<A>& v) -> bool {
                     return Pdt::equal(p_eq, u, v);
@@ -1624,7 +1470,6 @@ struct Pdt {
                 mapped
             );
 
-            // List.map parts ~f:(fun el -> Node (x, el))
             std::vector<PdtT<A>> result;
             result.reserve(parts.size());
             for (const auto& p : parts) {
@@ -1653,14 +1498,11 @@ struct Pdt {
                             F_LEAF f_leaf,
                             F_NODE f_node,
                             const PdtT<B>& pdt) {
-        // | _, Leaf l -> Leaf (f_leaf l)
         if (Pdt::isleaf(pdt)) {
             const auto& l = Pdt::unleaf(pdt);
             return Pdt::Leaf<A>(f_leaf(l));
         }
 
-
-        // | [_], Node (_, part) -> Leaf (f_node (Part.map part unleaf))
         if (Pdt::isnode(pdt) && vars.size() == 1) {
             const auto& part = Pdt::part(pdt);
             auto mapped_part = Part::map<PdtT<B>, B>(part,
@@ -1670,10 +1512,6 @@ struct Pdt {
             return Pdt::Leaf<A>(f_node(mapped_part));
         }
 
-        /*  | x :: vars, Node (y, part) -> if x = y then
-                Node (y, Part.map_dedup (equal p_eq) part (hide_reduce p_eq vars f_leaf f_node))
-             else hide_reduce p_eq vars f_leaf f_node (Node (y, part))
-        */
         if (Pdt::isnode(pdt) && !vars.empty()) {
             const auto& y    = Pdt::var(pdt);
             const auto& part = Pdt::part(pdt);
@@ -1699,7 +1537,6 @@ struct Pdt {
             }
         }
 
-        // | _ -> raise ...
         throw std::invalid_argument("Pdt::hide_reduce: function not defined for other cases");
     }
 
@@ -1738,25 +1575,18 @@ struct Pdt {
     */
     static PdtT<int> pdt_of(const std::vector<std::string>& vars,
                             const std::vector<std::unordered_map<std::string, Dom>>& maps) {
-        // Base case: no variables left
-        // OCaml: | [] -> if List.is_empty maps then Leaf (V ...) else Leaf (S ...)
         if (vars.empty()) {
             if (maps.empty()) {
-                return Leaf<int>(0);  // No matches found
+                return Leaf<int>(0);
             } else {
-                return Leaf<int>(1);  // Matches found
+                return Leaf<int>(1);
             }
         }
 
-        // Recursive case: split first variable
-        // OCaml: | x :: vars ->
         const std::string& x = vars.front();
         std::vector<std::string> vars_tail(vars.begin() + 1, vars.end());
 
-        // Collect all domain values for variable x across all maps
-        // OCaml: let ds = List.fold maps ~init:[] ~f:(fun acc map -> match Map.find map x with ...)
-        // Then: Set.of_list (module Dom) ds
-        Setc::SetT ds;  // Using Setc::SetT (std::set<Dom>) for automatic deduplication
+        Setc::SetT ds;
         for (const auto& map : maps) {
             auto it = map.find(x);
             if (it != map.end()) {
@@ -1764,8 +1594,6 @@ struct Pdt {
             }
         }
 
-        // Define find_maps function: filter maps where map[x] == d
-        // OCaml: let find_maps d = List.fold maps ~init:[] ~f:(fun acc map -> ...)
         auto find_maps = [&](const Dom& d) -> std::vector<std::unordered_map<std::string, Dom>> {
             std::vector<std::unordered_map<std::string, Dom>> filtered;
             for (const auto& map : maps) {
@@ -1777,18 +1605,12 @@ struct Pdt {
             return filtered;
         };
 
-        // Tabulate function: for each domain value d, recursively build PDT
-        // OCaml: (fun d -> pdt_of tp r trms vars (find_maps d))
         auto tabulate_func = [&](const Dom& d) -> PdtT<int> {
             return pdt_of(vars_tail, find_maps(d));
         };
 
-        // Zero case: PDT when no maps (empty assignment list)
-        // OCaml: (pdt_of tp r trms vars [])
         PdtT<int> zero_pdt = pdt_of(vars_tail, {});
 
-        // Build partition using tabulate_dedup
-        // OCaml: Part.tabulate_dedup (Pdt.equal Proof.equal) (Set.of_list (module Dom) ds) ...
         auto pdt_eq = [](const PdtT<int>& a, const PdtT<int>& b) -> bool {
             auto int_eq = [](int x, int y) -> bool { return x == y; };
             return Pdt::equal(int_eq, a, b);
@@ -1801,8 +1623,6 @@ struct Pdt {
             zero_pdt
         );
 
-        // Return node with variable name and partition
-        // OCaml: Node (x, part)
         return Node<int>(x, partition);
     }
 

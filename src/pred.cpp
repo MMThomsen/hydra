@@ -174,24 +174,19 @@ void Sig::print_table() {
 
 std::vector<Term>   check_terms(const std::string& p_name, 
                                 const std::vector<Term>& trms) {
-    // look up p_name in Sig::table and and retrieve element
     auto it = Sig::table.find(p_name);
 
-    // p_name not found
     if (it == Sig::table.end()) {
         throw std::invalid_argument("predicate not found: " + p_name);
     }
     
-    // binding props for p_name
     const auto& props = it->second;
 
-    // check arity
     if (static_cast<int>(trms.size()) != props.arity) {
         throw std::invalid_argument(
             "arity of " + p_name + " is " + std::to_string(props.arity));
     }
 
-    // Vars are always okay, but Const must match declared Dom::tt
     for (std::size_t i = 0; i < trms.size(); ++i) {
         const Term& t = trms[i];
         const auto& expected_tt = props.ntconsts[i].second;

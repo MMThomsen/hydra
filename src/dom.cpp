@@ -3,15 +3,6 @@
 #include <charconv>
 #include <sstream>
 
-/* 
-   To be implemented: string_to_t does not work with +<int or float>. 
-   This should be implemented later on or for improvement of program.
-
-   compare_t: works for -inf and inf, however nan does not work. 
-            Even when string_to_t converts "nan" correctly.
-
-*/
-
 
 Dom::Dom() = default;
 
@@ -24,28 +15,21 @@ bool Dom::equal(const Dom& a, const Dom& b) noexcept {
 }
 
 int Dom::compare_t(const Dom& a, const Dom& b) noexcept {
-    // 0) identical value (same type & same payload)
     if (a.v_ == b.v_) return 0;
 
-    // 1) same-type comparisons (no local bindings)
-
-    // Int
     if (std::holds_alternative<int>(a.v_) && std::holds_alternative<int>(b.v_))
         return (std::get<int>(a.v_) > std::get<int>(b.v_)) ? 1 : -1;
 
-    // String
     if (std::holds_alternative<std::string>(a.v_) && std::holds_alternative<std::string>(b.v_))
         return (std::get<std::string>(a.v_) > std::get<std::string>(b.v_)) ? 1 : -1;
 
-    // Float
     if (std::holds_alternative<double>(a.v_) && std::holds_alternative<double>(b.v_))
         return (std::get<double>(a.v_) > std::get<double>(b.v_)) ? 1 : -1;
 
-    // 2) cross-type order: Float < Str < Int
     auto rank = [](const Dom& d) noexcept {
-        if (std::holds_alternative<double>(d.v_))      return 0; // Float
-        if (std::holds_alternative<std::string>(d.v_)) return 1; // Str
-        return 2;                                                // Int
+        if (std::holds_alternative<double>(d.v_))      return 0;
+        if (std::holds_alternative<std::string>(d.v_)) return 1;
+        return 2;
     };
 
     int ra = rank(a), rb = rank(b);
@@ -108,7 +92,6 @@ Dom Dom::string_to_t(const std::string& s, Dom::tt t) {
     return Dom::Int(0);
 }
 
-// static function — has access to private v_
 std::string Dom::to_string(const Dom& d) {
     if (std::holds_alternative<int>(d.v_))         return std::to_string(std::get<int>(d.v_));
     if (std::holds_alternative<std::string>(d.v_)) return std::get<std::string>(d.v_);
