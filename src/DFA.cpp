@@ -3,6 +3,7 @@
 #include "common.h"
 #include <cstdlib>
 #include <cstring>
+// SHOULD BE NO CHNAGES IN THIS FILE
 
 /* Patch the list of states at f.out to point to start. */
 void patch(const Frag &f, NState *s)

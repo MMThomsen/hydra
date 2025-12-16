@@ -1,4 +1,5 @@
 #include "trie.h"
+#include "pred.h"
 
 #include <cstdlib>
 

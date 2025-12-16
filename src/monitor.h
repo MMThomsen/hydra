@@ -22,19 +22,19 @@ public:
 
     virtual ~Monitor() {}
     virtual Monitor *clone() = 0;
-    BooleanVerdict step() {
+    BooleanVerdict step(const std::vector<std::string>& vars) {
         if (eof) {
             throw EOL();
         } else {
             try {
-                return step_impl();
+                return step_impl(vars);
             } catch (const EOL &e) {
                 eof = true;
                 throw EOL();
             }
         }
     }
-    virtual BooleanVerdict step_impl() = 0;
+    virtual BooleanVerdict step_impl(const std::vector<std::string>& vars) = 0;
 };
 
 class EvalMonitor : public Monitor {
@@ -47,9 +47,14 @@ public:
     Monitor *clone() override {
         return new EvalMonitor(fmla, input_reader, handle->clone());
     }
-    BooleanVerdict step_impl() override {
-        bool b = fmla->eval(handle);
-        return BooleanVerdict(handle->ts, b ? TRUE : FALSE);
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override {
+        Pdt::PdtT<bool> b = fmla->eval(handle, vars);
+        auto do_boolean = [](bool v) -> Boolean { 
+            return v ? TRUE : FALSE;
+        };
+        Pdt::PdtT<Boolean> pb = Pdt::apply1<bool, Boolean>(vars, do_boolean, b);
+        
+        return BooleanVerdict(handle->ts, pb, vars);
     }
 };
 
@@ -61,14 +66,14 @@ class LastReader {
 
 public:
     int eof;
-    std::vector<vector<int> > sub_es;
+    std::vector<std::vector<Pdt::PdtT<Boolean>>> sub_es;
 
     size_t buf_len, buf_len_mask;
     size_t buf_beg, buf_end;
 
     LastReader(const vector<Formula *> &fmla, InputReader *input_reader, Event *handle, const std::vector<Monitor *> &sub_mon, size_t buf_len) : fmla(fmla), input_reader(input_reader), handle(handle), sub_mon(sub_mon), eof(0), buf_len(buf_len), buf_len_mask((1 << buf_len) - 1) {
         sub_es.resize(1 << buf_len);
-        for (size_t i = 0; i < sub_es.size(); i++) sub_es[i].resize(fmla.size());
+        for (size_t i = 0; i < sub_es.size(); i++) sub_es[i].resize(fmla.size(), Pdt::Leaf(FALSE));
         buf_beg = buf_end = 0;
     }
     LastReader(LastReader *l_reader) : fmla(l_reader->fmla), input_reader(l_reader->input_reader), handle(l_reader->handle->clone()), eof(l_reader->eof), buf_len(l_reader->buf_len), buf_len_mask(l_reader->buf_len_mask), buf_beg(l_reader->buf_beg), buf_end(l_reader->buf_end) {
@@ -86,14 +91,14 @@ public:
         for (size_t i = 0; i < sub_mon.size(); i++) delete sub_mon[i];
     }
 
-    void run() {
+    void run(const std::vector<std::string>& vars) {
         if (eof) return;
         input_reader->read_handle(handle);
         size_t buf_end_mod = buf_end & buf_len_mask;
         try {
           for (size_t i = 0; i < fmla.size(); i++) {
-              BooleanVerdict v = sub_mon[i]->step();
-              sub_es[buf_end_mod][i] = (v.b == TRUE);
+              BooleanVerdict v = sub_mon[i]->step(vars);
+              sub_es[buf_end & buf_len_mask][i] = v.b;
           }
           buf_end++;
         } catch (const EOL &e) {
@@ -108,6 +113,7 @@ protected:
     InputReader *input_reader;
     Event *b_head, *f_head;
     LastReader *b_reader, *f_reader;
+    std::vector<std::string> vars;
 
     // auxiliary storage
     // invariant: seen[i] == -1 for all i
@@ -117,11 +123,15 @@ protected:
     struct CurEntry {
         DState *q;                                          // current state in the run from dfa->init
         std::optional<std::pair<timestamp, int> > last_sat; // last satisfaction in the run from dfa->init
+        // Before: (no last_sat_bindings field)
+        Pdt::PdtT<Boolean> last_sat_bindings = Pdt::Leaf(FALSE);  // bindings at last satisfaction (NOT USING ANYMORE)
     } cur;
 
     struct QMapEntry {
         DState *q;                                                // used by run_back()
         std::optional<std::pair<timestamp, int> > last_sat = {};  // last satisfaction before end time-point
+        // Before: (no last_sat_bindings field)
+        Pdt::PdtT<Boolean> last_sat_bindings = Pdt::Leaf(FALSE);  // bindings at last satisfaction
         DState *end_q;                                            // state at end time-point
 
         QMapEntry() {}
@@ -137,12 +147,14 @@ protected:
     void rescale_seen() {
         seen.resize(dfa->get_cnt(), -1);
     }
-    vector<int> back_es() {
+
+    vector<Pdt::PdtT<Boolean>> back_es() { 
         CHECK(b_reader->buf_beg != b_reader->buf_end || b_reader->eof);
         if (b_reader->buf_beg == b_reader->buf_end) throw EOL();
         return b_reader->sub_es[b_reader->buf_beg & b_reader->buf_len_mask];
     }
-    vector<int> front_es() {
+
+    vector<Pdt::PdtT<Boolean>> front_es() {
         if (f_reader == NULL) {
           if (b_reader->eof) throw EOL();
           return b_reader->sub_es[(b_reader->buf_end - 1) & b_reader->buf_len_mask];
@@ -151,26 +163,26 @@ protected:
           return f_reader->sub_es[(f_reader->buf_end - 1) & f_reader->buf_len_mask];
         }
     }
-    void run_ms_front() {
+    void run_ms_front(const std::vector<std::string>& vars) {
         if (b_reader->buf_end - b_reader->buf_beg < (1 << b_reader->buf_len)) {
             CHECK(b_reader->buf_end - 1 == front_tp);
-            b_reader->run();
+            b_reader->run(vars);
         } else if (f_reader == NULL) {
             CHECK(b_reader->buf_end - 1 == front_tp);
             f_reader = new LastReader(b_reader);
         }
         if (f_reader != NULL) {
-            f_reader->run();
+            f_reader->run(vars);
         }
     }
-    void run_ms_back() {
+    void run_ms_back(const std::vector<std::string>& vars) {
         b_reader->buf_beg++;
         if (b_reader->buf_end - 1 < front_tp) {
-            b_reader->run();
+            b_reader->run(vars);
         }
     }
 
-    MH_FW(MH_FW *s) : dfa(s->dfa), input_reader(s->input_reader), b_head(s->b_head->clone()), f_head(s->f_head->clone()), b_reader(new LastReader(s->b_reader)), seen(s->seen), q_map(s->q_map), q_map_init(s->q_map_init) {
+    MH_FW(MH_FW *s) : dfa(s->dfa), input_reader(s->input_reader), b_head(s->b_head->clone()), f_head(s->f_head->clone()), b_reader(new LastReader(s->b_reader)), seen(s->seen), q_map(s->q_map), q_map_init(s->q_map_init), vars(s->vars) {
         if (s->f_reader != NULL) f_reader = new LastReader(s->f_reader);
         else f_reader = NULL;
 
@@ -179,13 +191,13 @@ protected:
     }
 
 public:
-    MH_FW(DFA *dfa, InputReader *input_reader, LastReader *l_reader) : dfa(dfa), input_reader(input_reader), b_reader(l_reader) {
+    MH_FW(DFA *dfa, InputReader *input_reader, LastReader *l_reader, const std::vector<std::string>& vars) : dfa(dfa), input_reader(input_reader), b_reader(l_reader), vars(vars) { 
         b_head = input_reader->open_handle();
         input_reader->read_handle(b_head);
         f_head = input_reader->open_handle();
         input_reader->read_handle(f_head);
 
-        b_reader->run();
+        b_reader->run(vars);
         f_reader = NULL;
 
         q_map.push_back(std::make_pair(dfa->empty, QMapEntry(std::nullopt, dfa->empty)));
@@ -201,7 +213,7 @@ public:
     virtual MH_FW *clone() {
         return new MH_FW(this);
     }
-    BooleanVerdict check_fw(timestamp from, timestamp to) {
+    BooleanVerdict check_fw(timestamp from, timestamp to) { 
         if (b_head->eof) throw EOL();
         timestamp t = b_head->ts;
         while (!f_head->eof && memR(t, f_head->ts, from, to)) {
@@ -209,21 +221,37 @@ public:
         }
         if (f_head->eof) throw EOL();
         QMapEntry *e = &q_map[q_map_init].second;
-        Boolean b = FALSE;
-        if (e->last_sat && memL(t, e->last_sat->first, from, to)) b = TRUE;
+        Pdt::PdtT<Boolean> b = Pdt::Leaf(FALSE);
+
+        if (e->last_sat && memL(t, e->last_sat->first, from, to)) {
+            b = Pdt::Leaf(TRUE);
+        }
+        
         run_back();
-        return BooleanVerdict(t, b);
+        return BooleanVerdict(t, b, this->vars);
     }
     virtual void run_front() {
         if (f_head->eof) throw EOL();
         timestamp tj = f_head->ts;
         input_reader->read_handle(f_head);
-        vector<int> bj = front_es();
-        run_ms_front();
+
+        vector<Pdt::PdtT<Boolean>> bj = front_es();
+        // has_true_leaf(...) is used to collapse the PDT verdict to a single
+        // Boolean: true iff the predicate holds in this event (for a plain
+        // predicate, or for at least one variable binding in½ the parametric case).
+        // Such that bj_int represent whether the predicate with or without variable bindings
+        // has been observed in the log.
+        vector<int> bj_int(bj.size());
+        for (size_t i = 0; i < bj.size(); i++) {
+            bj_int[i] = has_true_leaf(bj[i]) ? 1 : 0;
+        }
+
+        run_ms_front(vars);
 
         for (size_t i = 0; i < q_map.size(); i++) {
             QMapEntry *e = &q_map[i].second;
-            e->end_q = dfa->run(e->end_q, bj);
+            e->end_q = dfa->run(e->end_q, bj_int);
+            
             if (e->end_q->accept) e->last_sat = std::make_pair(tj, front_tp);
         }
         front_tp++;
@@ -233,11 +261,15 @@ public:
         timestamp ti = b_head->ts;
         input_reader->read_handle(b_head);
 
-        const vector<int> bi = back_es();
-        run_ms_back();
+        const vector<Pdt::PdtT<Boolean>> bi = back_es();
+        vector<int> bi_int(bi.size());
+        for (size_t i = 0; i < bi.size(); i++) {
+            bi_int[i] = has_true_leaf(bi[i]) ? 1 : 0;
+        }
+        run_ms_back(vars);
 
         for (size_t i = 0; i < q_map.size(); i++) {
-            q_map[i].first = dfa->run(q_map[i].first, bi);
+            q_map[i].first = dfa->run(q_map[i].first, bi_int);
             q_map[i].second.q = q_map[i].first; // initialize a fresh run
             if (q_map[i].second.last_sat && q_map[i].second.last_sat->second == back_tp) {
                 q_map[i].second.last_sat = {};
@@ -293,7 +325,7 @@ public:
             CHECK(!c_head->eof);
             timestamp tcur = c_head->ts;
             input_reader->read_handle(c_head);
-            vector<int> b_cur;
+            vector<Pdt::PdtT<Boolean>> b_cur;
             if (cur_tp < b_reader->buf_end - 1) {
                 b_cur = b_reader->sub_es[cur_tp & b_reader->buf_len_mask];
             } else {
@@ -304,14 +336,24 @@ public:
                 b_cur = c_reader->sub_es[cur_tp & c_reader->buf_len_mask];
             }
             if (c_reader != NULL) {
-              c_reader->run();
+              c_reader->run(vars);
             }
 
-            cur.q = dfa->run(cur.q, b_cur);
+            // has_true_leaf(...) is used to collapse the PDT verdict to a single
+            // Boolean: true iff the predicate holds in this event (for a plain
+            // predicate, or for at least one variable binding in the parametric case).
+            // Such that bj_cur_int represent whether the predicate with or without variable bindings
+            // has been observed in the log.
+            vector<int> b_cur_int(b_cur.size());
+            for (size_t i = 0; i < b_cur.size(); i++) {
+                b_cur_int[i] = has_true_leaf(b_cur[i]) ? 1 : 0;
+            }
+
+            cur.q = dfa->run(cur.q, b_cur_int);
             if (cur.q->accept) cur.last_sat = std::make_pair(tcur, cur_tp);
 
             for (size_t i = 0; i < q_map.size(); i++) {
-                q_map[i].second.q = dfa->run(q_map[i].second.q, b_cur);
+                q_map[i].second.q = dfa->run(q_map[i].second.q, b_cur_int);
             }
 
             cur_tp++;
@@ -341,7 +383,7 @@ class MH_BW : public MH_FW {
     MH_BW(MH_BW *s) : MH_FW(s), e_map(s->e_map) {}
 
 public:
-    MH_BW(DFA *dfa, InputReader *input_reader, LastReader *l_reader) : MH_FW(dfa, input_reader, l_reader) {}
+    MH_BW(DFA *dfa, InputReader *input_reader, LastReader *l_reader, const std::vector<std::string>& vars) : MH_FW(dfa, input_reader, l_reader, vars) {}
     virtual MH_BW *clone() override {
         return new MH_BW(this);
     }
@@ -354,21 +396,25 @@ public:
         while (back_tp < front_tp && memL(b_head->ts, t, from, to)) {
             run_back();
         }
-        Boolean b = FALSE;
-        for (size_t i = 0; b == FALSE && i < e_map.size(); i++) {
-            if (e_map[i].first->accept && memR(e_map[i].second.first, t, from, to)) b = TRUE;
+        Pdt::PdtT<Boolean> b = Pdt::Leaf(FALSE);
+        for (size_t i = 0; has_true_leaf(b) == false && i < e_map.size(); i++) {
+            if (e_map[i].first->accept && memR(e_map[i].second.first, t, from, to)) b = Pdt::Leaf(TRUE);
         }
-        return BooleanVerdict(t, b);
+        return BooleanVerdict(t, b, this->vars);
     }
     virtual void run_front() override {
         CHECK(!q_map.empty());
 
         if (f_head->eof) throw EOL();
-        vector<int> bj = front_es();
+        vector<Pdt::PdtT<Boolean>> bj = front_es();
+        vector<int> bj_int(bj.size());
+        for (size_t i = 0; i < bj.size(); i++) {
+            bj_int[i] = has_true_leaf(bj[i]) ? 1 : 0;
+        }
 
         size_t idx = 0;
         for (size_t i = 0; i < e_map.size(); i++) {
-            e_map[i].first = dfa->run(e_map[i].first, bj);
+            e_map[i].first = dfa->run(e_map[i].first, bj_int);
         }
         rescale_seen();
         for (size_t i = 0; i < e_map.size(); i++) {
@@ -412,7 +458,7 @@ public:
         delete s;
     }
     Monitor *clone() override;
-    BooleanVerdict step_impl() override;
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override;
 };
 
 class FwMonitor : public Monitor {
@@ -429,7 +475,7 @@ public:
         delete s;
     }
     Monitor *clone() override;
-    BooleanVerdict step_impl() override;
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override;
 };
 
 class NonTempMonitor : public Monitor {
@@ -445,7 +491,7 @@ public:
         delete handle;
     }
     Monitor *clone() override;
-    BooleanVerdict step_impl() override;
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override;
 };
 
 class NegMonitor : public Monitor {
@@ -459,8 +505,8 @@ public:
     Monitor *clone() override {
         return new NegMonitor(subf->clone());
     }
-    BooleanVerdict step_impl() override {
-        return !subf->step();
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override {
+        return !subf->step(vars);
     }
 };
 
@@ -476,8 +522,8 @@ public:
     Monitor *clone() override {
         return new AndMonitor(subf->clone(), subg->clone());
     }
-    BooleanVerdict step_impl() override {
-        return subf->step() && subg->step();
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override {
+        return subf->step(vars) && subg->step(vars);
     }
 };
 
@@ -493,8 +539,8 @@ public:
     Monitor *clone() override {
         return new OrMonitor(subf->clone(), subg->clone());
     }
-    BooleanVerdict step_impl() override {
-        return subf->step() || subg->step();
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override {
+        return subf->step(vars) || subg->step(vars);
     }
 };
 
@@ -512,7 +558,7 @@ public:
         delete handle;
     }
     Monitor *clone() override;
-    BooleanVerdict step_impl() override;
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override;
 };
 
 class NextMonitor : public Monitor {
@@ -529,7 +575,7 @@ public:
         delete handle;
     }
     Monitor *clone() override;
-    BooleanVerdict step_impl() override;
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override;
 };
 
 class SinceMonitor : public Monitor {
@@ -553,7 +599,7 @@ public:
         delete handle;
     }
     Monitor *clone() override;
-    BooleanVerdict step_impl() override;
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override;
 };
 
 class UntilMonitor : public Monitor {
@@ -562,12 +608,13 @@ class UntilMonitor : public Monitor {
     InputReader *input_reader;
     Event *front, *back;
     int c;
-    std::optional<std::pair<timestamp, std::pair<Boolean, Boolean> > > z;
+    std::optional<std::pair<timestamp, std::pair<Pdt::PdtT<Boolean>, Pdt::PdtT<Boolean>>>> z;
 
     bool loopCondUntil() const {
         if (c != 0) {
             if (z) {
-                if ((z->second.second && memL(back->ts, z->first, from, to)) || !z->second.first) return false;
+                // Orignal: if ((z->second.second && memL(back->ts, z->first, from, to)) || !z->second.first) return false;
+                if (((has_true_leaf(z->second.second) ? TRUE : FALSE) && memL(back->ts, z->first, from, to)) || ((!has_true_leaf(z->second.first)) ? TRUE : FALSE)) return false;
             }
         }
         if (front->eof) return false;
@@ -586,7 +633,7 @@ public:
         delete back;
     }
     Monitor *clone() override;
-    BooleanVerdict step_impl() override;
+    BooleanVerdict step_impl(const std::vector<std::string>& vars) override;
 };
 
 #endif /* __MONITOR_H__ */

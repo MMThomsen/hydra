@@ -1,0 +1,4 @@
+@0 p(Alice,5) p(Alice,10) p(Bob,5) p(Bob,10)
+@1 p(Charlie,3) p(Charlie,7) p(Dave,3) p(Eve,7)
+@2 p(Frank,2) p(Frank,5) p(George,2)
+@3 p(Alice,1) p(Alice,4) p(Bob,1)

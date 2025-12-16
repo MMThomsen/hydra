@@ -4,7 +4,7 @@
 #include <cstring>
 
 template<typename MH>
-std::pair<DFA *, MH *> createMH(Regex *r, InputReader *input_reader) {
+std::pair<DFA *, MH *> createMH(Regex *r, InputReader *input_reader, const std::vector<std::string>& vars) {
     std::vector<Formula *> fmla;
     CollectVisitor c(fmla);
     r->accept(c);
@@ -16,7 +16,7 @@ std::pair<DFA *, MH *> createMH(Regex *r, InputReader *input_reader) {
     DFA *dfa = new DFA(nfa);
     int buf_len = 0;
     while ((1 << buf_len) < s.get() + 1) buf_len++;
-    MonitorVisitor mv(input_reader);
+    MonitorVisitor mv(input_reader, vars);
     std::vector<Monitor *> sub_mon;
     Event *handle = input_reader->open_handle();
     for (size_t i = 0; i < fmla.size(); i++) {
@@ -29,11 +29,11 @@ std::pair<DFA *, MH *> createMH(Regex *r, InputReader *input_reader) {
     }
 
     LastReader *l_reader = new LastReader(fmla, input_reader, handle, sub_mon, buf_len);
-    return make_pair(dfa, new MH(dfa, input_reader, l_reader));
+    return make_pair(dfa, new MH(dfa, input_reader, l_reader, vars));
 }
 
-template std::pair<DFA *, MH_FW *> createMH(Regex *r, InputReader *input_reader);
-template std::pair<DFA *, MH_BW *> createMH(Regex *r, InputReader *input_reader);
+template std::pair<DFA *, MH_FW *> createMH(Regex *r, InputReader *input_reader, const std::vector<std::string>& vars);
+template std::pair<DFA *, MH_BW *> createMH(Regex *r, InputReader *input_reader, const std::vector<std::string>& vars);
 
 void AtomRegexVisitor::visit(LookaheadRegex *r) {
     AtomFormulaVisitor v(atoms);

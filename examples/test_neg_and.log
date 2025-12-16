@@ -1,0 +1,4 @@
+@0 p(Alice,Bob) q(Bob,Alice)
+@1 p(Charlie,Dave) q(Dave,Frank)
+@2 p(Eve,5) q(5,Eve)
+@3

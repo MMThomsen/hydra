@@ -1,7 +1,12 @@
 #ifndef __TRIE_H__
 #define __TRIE_H__
 
+#include "pred.h"
+
 #include <cstdlib>
+#include <vector>
+#include <string>
+#include <algorithm>
 
 template<typename T>
 struct TrieNode {

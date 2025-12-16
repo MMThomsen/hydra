@@ -1,0 +1,7 @@
+@0 p0(Alice)
+@2 p0(Bob) p0(Charlie)
+@3 p1(Bob,5) p1(Dave,10)
+@4 p1(Charlie,15)
+@5 p0(Dave)
+@7 p0(Eve)
+@8 p1(Eve,20)

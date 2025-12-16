@@ -6,6 +6,8 @@
 #include "lexer.h"
 #include "trie.h"
 #include "util.h"
+#include "pred.h"
+
 
 #include <exception>
 #include <stdexcept>
@@ -18,6 +20,10 @@ int yyerror(Formula **fmla, yyscan_t scanner, const char *msg) {
 
 %code requires {
     typedef void *yyscan_t;
+    
+    #include <vector>
+    #include "dom.h"
+    #include "pred.h"
 }
 
 %output  "parser.cpp"
@@ -34,6 +40,8 @@ int yyerror(Formula **fmla, yyscan_t scanner, const char *msg) {
     interval in;
     Regex *regex;
     Formula *fmla;
+    Term *term;
+    std::vector<Term> *args;
 }
 
 %token TOKEN_FALSE "FALSE"
@@ -49,6 +57,8 @@ int yyerror(Formula **fmla, yyscan_t scanner, const char *msg) {
 %token TOKEN_EVENTUALLY "EVENTUALLY"
 %token TOKEN_PAST_ALWAYS "PAST_ALWAYS"
 %token TOKEN_ALWAYS "ALWAYS"
+%token TOKEN_EXISTS "EXISTS"
+%token TOKEN_FORALL "FORALL"
 %token TOKEN_BACKWARD "BACKWARD"
 %token TOKEN_FORWARD "FORWARD"
 %token TOKEN_QUESTION "QUESTION"
@@ -70,6 +80,8 @@ int yyerror(Formula **fmla, yyscan_t scanner, const char *msg) {
 %type <in> interval
 %type <regex> regex
 %type <fmla> formula
+%type <term> term                         // Added since last meeting
+%type <args> args                         // Added since last meeting
 
 %nonassoc "BACKWARD" "FORWARD"
 
@@ -120,10 +132,23 @@ regex
     | "OPEN" regex[r] "CLOSE"                           { $$ = $r; }
     ;
 
+term
+    : "ATOM"                                            { $$ = new Term(Term::Var($1)); }
+    | number[n]                                         { $$ = new Term(Term::Const(Dom::Int($n))); }
+    ;
+
+args
+    : %empty                                            { $$ = new std::vector<Term>(); }
+    | term[t]                                           { $$ = new std::vector<Term>(); $$->push_back(*$t); delete $t; }
+    | term[t] "SEP" args[a]                             { $a->insert($a->begin(), *$t); delete $t; $$ = $a; }
+    ;
+
+
 formula
     : "FALSE"                                           { $$ = new BoolFormula(false); }
     | "TRUE"                                            { $$ = new BoolFormula(true); }
-    | "ATOM"                                            { $$ = new AtomFormula($1, trie.getOrAdd($1), 1); }
+    | "ATOM"                                            { $$ = new AtomFormula($1, trie.getOrAdd($1), new std::vector<Term>(), 1); }
+    | "ATOM" "OPEN" args[a] "CLOSE"                     { $$ = new AtomFormula($1, trie.getOrAdd($1), $a, 1); }
     | "NEG" formula[f]                                  { $$ = new NegFormula($f); }
     | formula[f] "CONJ" formula[g]                      { $$ = new AndFormula($f, $g); }
     | formula[f] "DISJ" formula[g]                      { $$ = new OrFormula($f, $g); }
@@ -135,6 +160,8 @@ formula
     | "EVENTUALLY" interval[i] formula[f]               { $$ = new UntilFormula(new BoolFormula(true), $f, $i); }
     | "PAST_ALWAYS" interval[i] formula[f]              { $$ = new NegFormula(new SinceFormula(new BoolFormula(true), new NegFormula($f), $i)); }
     | "ALWAYS" interval[i] formula[f]                   { $$ = new NegFormula(new UntilFormula(new BoolFormula(true), new NegFormula($f), $i)); }
+    | "EXISTS" "ATOM" "DOT" formula[f]                  { $$ = new ExistsFormula($2, $f); }
+    | "FORALL" "ATOM" "DOT" formula[f]                  { $$ = new NegFormula(new ExistsFormula($2, new NegFormula($f))); }
     | "BACKWARD" interval[i] regex[r] %prec "BACKWARD"  { $$ = new BwFormula(mdlaerial ? new TimesRegex($r, new SymbolRegex(new BoolFormula(true))) : $r, $i); }
     | "FORWARD" interval[i] regex[r] %prec "FORWARD"    { $$ = new FwFormula(mdlaerial ? new TimesRegex($r, new SymbolRegex(new BoolFormula(true))) : $r, $i); }
     | "OPEN" formula[f] "CLOSE"                         { $$ = $f; }

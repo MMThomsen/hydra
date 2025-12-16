@@ -3,6 +3,9 @@
 
 #include "trie.h"
 #include "util.h"
+#include "dom.h" 
+#include "pred.h"
+#include "pdt.h"
 
 #include <algorithm>
 #include <cassert>
@@ -28,9 +31,12 @@ struct Event {
 
     int c;
     int ap_cnt;
-    vector<int> ap_lookup;
+    vector<vector<vector<Dom>>> ap_lookup; 
 
-    Event(int ap_cnt = 0) : pos(0), ts(0), tp(-1), eof(0), c(-1), ap_cnt(ap_cnt), ap_lookup(ap_cnt) {}
+    Event(int ap_cnt) : pos(0), ts(0), tp(-1), eof(0), c(-1), ap_cnt(ap_cnt) {
+        ap_lookup.resize(ap_cnt);
+    }
+
     Event(const Event *e) : pos(e->pos), ts(e->ts), tp(e->tp), eof(e->eof), c(e->c), ap_cnt(e->ap_cnt), ap_lookup(e->ap_lookup) {}
     bool operator<(const Event &e) const {
         return c < e.c || (c == e.c && ap_lookup < e.ap_lookup);
@@ -38,16 +44,58 @@ struct Event {
     Event *clone() const {
         return new Event(this);
     }
+
     int eval(int fid) const {
         CHECK(0 <= fid && fid < ap_cnt);
-        return ap_lookup[fid];
+        return !ap_lookup[fid].empty() ? 1 : 0;
     }
-    int evalAtom(const char *pred_name, int pred) const {
+
+    Pdt::PdtT<int> evalAtom(const char *pred_name, int pred, const std::vector<Term> *args, const std::vector<std::string>& vars) const {
         if (c == -1) {
             CHECK(0 <= pred && pred < ap_cnt);
-            return ap_lookup[pred];
+            
+            
+            size_t expected_arity = (args == nullptr) ? 0 : args->size();
+            
+            std::vector<std::string> pdt_vars;
+            std::vector<std::unordered_map<std::string, Dom>> maps;
+            
+            if (args != nullptr) {
+                for (const auto& var : vars) {
+                    for (const auto& term : *args) {
+                        if (Term::isVar(term) && Term::unvar(term) == var) {
+                            pdt_vars.push_back(var);
+                        }
+                    }
+                }
+                
+                for (const auto& tuple : ap_lookup[pred]) {
+                    if (tuple.size() != expected_arity) continue;
+                    
+                    std::unordered_map<std::string, Dom> empty_map;
+                    auto result = Term::match_terms(*args, tuple, empty_map);
+                    if (result.has_value()) {
+                        maps.push_back(result.value());
+                    }
+                }
+            }
+            
+            if (!pdt_vars.empty()) {
+                auto pdt = Pdt::pdt_of(pdt_vars, maps);
+                return pdt;
+            }
+            
+            bool has_matching_arity = false;
+            for (const auto& tuple : ap_lookup[pred]) {
+                if (tuple.size() == expected_arity) {
+                    has_matching_arity = true;
+                    break;
+                }
+            }
+            
+            return Pdt::Leaf(has_matching_arity ? 1 : 0);
         } else {
-            return c == pred_name[0];
+            return Pdt::Leaf(c == pred_name[0] ? 1 : 0);
         }
     }
 };
@@ -70,8 +118,8 @@ class MapInputReader : public InputReader {
 
     int fsm(const char *line, size_t *pos) {
         TrieNode<int> *t = &trie->root;
-        size_t i = *pos;
-        while (i < f_size && line[i] != ' ' && line[i] != '\r' && line[i] != '\n') {
+        size_t i = *pos;  
+        while (i < f_size && line[i] != ' ' && line[i] != '\r' && line[i] != '\n' && line[i] != '(') {  
             if (line[i] & 0x80) throw std::runtime_error("log file format");
             if (t->next[line[i]] == NULL) {
                 *pos = i;
@@ -118,16 +166,71 @@ public:
         if (parseNumber(mapped, &pos, &ts)) throw std::runtime_error("timestamp");
         e->ts = ts;
         e->tp++;
-        for (int i = 0; i < e->ap_cnt; i++) e->ap_lookup[i] = 0;
+
+        for (int i = 0; i < e->ap_cnt; i++) {
+            e->ap_lookup[i].clear();
+        }
         while (pos < f_size && mapped[pos] != '\r' && mapped[pos] != '\n') {
-           if (mapped[pos] == ' ') {
-               pos++;
-           } else {
-               int value = fsm(mapped, &pos);
-               if (value == -1) {
-                   while(pos < f_size && mapped[pos] != ' ' && mapped[pos] != '\r' && mapped[pos] != '\n') pos++;
-               } else {
-                   e->ap_lookup[value] = 1;
+            if (mapped[pos] == ' ') {
+                pos++;
+            } else {
+                int value = fsm(mapped, &pos);
+                if (value == -1) {
+                    while(pos < f_size && mapped[pos] != ' ' && mapped[pos] != '\r' && mapped[pos] != '\n') pos++;
+                } else {
+                    vector<Dom> tuple_args; 
+
+                    if (pos < f_size && mapped[pos] == '(') {
+                        pos++;
+
+                        while (pos < f_size && mapped[pos] != ')') {
+                            while (pos < f_size && mapped[pos] == ' ') pos++;
+                           
+                            size_t arg_start = pos;
+                            while (pos < f_size && mapped[pos] != ',' && 
+                                    mapped[pos] != ')' && mapped[pos] != ' ') {
+                                pos++;
+                            }
+
+                            if (pos > arg_start) {
+                                string arg_str(mapped + arg_start, pos - arg_start);
+                                
+                                try {
+                                    size_t idx;
+                                    int int_val = std::stoi(arg_str, &idx);
+                                    if (idx == arg_str.length()) {
+                                        tuple_args.push_back(Dom::Int(int_val));
+                                    } else {
+                                        throw std::invalid_argument("not an int");
+                                    }
+                                } catch (...) {
+                                    try {
+                                        size_t idx;
+                                        double float_val = std::stod(arg_str, &idx);
+                                        if (idx == arg_str.length()) {
+                                            tuple_args.push_back(Dom::Float(float_val));
+                                        } else {
+                                            throw std::invalid_argument("not a float");
+                                        }
+                                    } catch (...) {
+                                        tuple_args.push_back(Dom::Str(arg_str));
+                                    }
+                                }
+                            }                          
+                           
+                           while (pos < f_size && mapped[pos] == ' ') pos++;
+                           
+                           if (pos < f_size && mapped[pos] == ',') {
+                               pos++;
+                           }
+                       }
+                       
+                       if (pos < f_size && mapped[pos] == ')') {
+                           pos++;
+                       }
+                   } 
+                   
+                   e->ap_lookup[value].push_back(tuple_args);
                }
            }
         }

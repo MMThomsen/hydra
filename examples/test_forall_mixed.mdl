@@ -1,0 +1,1 @@
+FORALL r. (q(x,r) OR q(r,y))

@@ -1,0 +1,1 @@
+FORALL x. (p0(x) IMPLIES (▷ [1,1] p1(x)))

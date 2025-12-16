@@ -10,6 +10,7 @@
 #include "lexer.h"
 #include "util.h"
 #include "visitors.h"
+#include "pdt.h"
 
 #include "monitor.h"
 #include "trie.h"
@@ -95,19 +96,23 @@ int main(int argc, char **argv)
     if (grep) input_reader = new GrepInputReader(argv[2]);
     else input_reader = new MapInputReader(argv[2], &trie);
 
-    MonitorVisitor mv(input_reader);
+    std::vector<std::string> free_vars = fmla->free_variables();
+    MonitorVisitor mv(input_reader, free_vars);
     fmla->accept(mv);
     Monitor *mon = mv.get_mon();
     TimePoint tp;
+    
     do {
         try {
-            BooleanVerdict v = mon->step();
+            BooleanVerdict v = mon->step(free_vars); 
             tp.update(v.ts);
             if (grep) {
-                if (v.b == TRUE) printf("%d\n", tp.tp);
+                if (has_true_leaf(v.b)) printf("%d\n", tp.tp);
             } else {
-                CHECK(v.b == TRUE || v.b == FALSE);
-                printf("%d:%d %s\n", tp.ts, tp.off, (v.b == FALSE ? "false" : "true"));
+                auto booleanToBool_printer = [](const std::string& indent, Boolean val) -> std::string {
+                    return indent + (val == TRUE ? "true" : "false");
+                };
+                printf("%d:%d\nExplanation:\n%s\n", tp.ts, tp.off, Pdt::to_string(booleanToBool_printer, "", v.b).c_str());
             }
         } catch (const EOL &e) {
             break;

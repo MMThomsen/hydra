@@ -42,6 +42,8 @@ ONCE                { return TOKEN_ONCE; }
 EVENTUALLY          { return TOKEN_EVENTUALLY; }
 PAST_ALWAYS         { return TOKEN_PAST_ALWAYS; }
 ALWAYS              { return TOKEN_ALWAYS; }
+EXISTS              { return TOKEN_EXISTS; }
+FORALL              { return TOKEN_FORALL; }
 ◁                   { return TOKEN_BACKWARD; }
 ▷                   { return TOKEN_FORWARD; }
 \?                  { return TOKEN_QUESTION; }

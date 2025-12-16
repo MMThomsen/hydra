@@ -1,0 +1,1 @@
+p(x,y) AND FORALL r. q(y,r)
