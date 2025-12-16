@@ -31,6 +31,7 @@ WS          [ \r\n\t]*
 {WS}                { continue; }
 false               { return TOKEN_FALSE; }
 true                { return TOKEN_TRUE; }
+EQCONST             { return TOKEN_EQCONST; }
 NOT                 { return TOKEN_NEG; }
 AND                 { return TOKEN_CONJ; }
 OR                  { return TOKEN_DISJ; }

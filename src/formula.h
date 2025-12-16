@@ -33,7 +33,8 @@ struct SinceFormula;
 struct UntilFormula;
 struct BwFormula;
 struct FwFormula;
-struct ExistsFormula;  // Added
+struct ExistsFormula;
+struct EqConstFormula;
 
 class RegexVisitor {
 public:
@@ -57,7 +58,8 @@ public:
     virtual void visit(UntilFormula *f) = 0;
     virtual void visit(BwFormula *f) = 0;
     virtual void visit(FwFormula *f) = 0;
-    virtual void visit(ExistsFormula *f) = 0;  // Added
+    virtual void visit(ExistsFormula *f) = 0; 
+    virtual void visit(EqConstFormula *f) = 0; 
 };
 
 struct Regex {
@@ -263,6 +265,9 @@ struct Formula {
         return false;
     }
     virtual bool equalExists(const ExistsFormula *f) const { 
+        return false; 
+    } 
+    virtual bool equalEqConst(const EqConstFormula *f) const { 
         return false; 
     } 
 };
@@ -738,6 +743,54 @@ struct ExistsFormula : Formula {
         auto result = process(local_pdt);
         
         return result;
+    }
+};
+
+struct EqConstFormula : Formula {
+    const char *var_name;
+    Term *constant;
+
+    EqConstFormula(const char *var_name, Term *constant): Formula(0), var_name(var_name), constant(constant) {}
+    
+    ~EqConstFormula() override {
+        if (constant != NULL) delete constant;
+    }
+    
+    void accept(FormulaVisitor &v) override {
+        v.visit(this);
+    }
+    
+    bool equal(const Formula *f) const override {
+        return f->equalEqConst(this);
+    }
+    
+    bool equalEqConst(const EqConstFormula *sub) const override {
+        return Term::equal(*constant, *(sub->constant)) && strcmp(var_name, sub->var_name) == 0;
+    }
+    
+    std::vector<string> free_variables() const override {
+        std::vector<std::string> vars;
+        vars.push_back(std::string(var_name));
+        return vars;
+    }
+    Pdt::PdtT<bool> eval(const Event *e, const std::vector<std::string>& vars) const override {
+        std::vector<std::string> pdt_vars = { std::string(var_name) };
+        std::vector<std::unordered_map<std::string, Dom>> maps;
+
+        if (!Term::isVar(*constant)) {
+            std::unordered_map<std::string, Dom> m;
+            m[std::string(var_name)] = Term::unconst(*constant); 
+            maps.push_back(std::move(m));
+        } else {
+            std::unordered_map<std::string, Dom> m;
+            m[std::string(var_name)] = Dom::Str(Term::unvar(*constant)); 
+            maps.push_back(std::move(m));
+        }
+
+        auto pdt_int = Pdt::pdt_of(pdt_vars, maps);
+
+        auto to_bool = [](int v) -> bool { return v != 0; };
+        return Pdt::apply1<int, bool>(vars, to_bool, pdt_int);
     }
 };
 
