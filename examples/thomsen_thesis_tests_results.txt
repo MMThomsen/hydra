@@ -1,0 +1,4700 @@
+================================================================================
+TEST 1: EQCONST AND test case
+================================================================================
+Command:
+./hydra ./examples/eqconst.mdl ./examples/eqconst.log
+
+
+FORMULA:
+(x EQCONST Alice) AND p(x,y)
+
+LOG:
+@0 p(Alice,5)
+@1 p(Bob,3)
+@2 p(Alice,7)
+@3 p(Charlie,2)
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {5}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {5}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice, Bob}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    x ∈ {Bob}
+
+        ❮
+
+        y ∈ Complement of {3}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {3}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {7}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {7}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice, Charlie}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    x ∈ {Charlie}
+
+        ❮
+
+        y ∈ Complement of {2}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {2}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    ❯
+
+
+
+================================================================================
+TEST 2: Example 2 thesis
+================================================================================
+Command:
+./hydra ./examples/example2_thesis.mdl ./examples/example2_thesis.log
+
+
+FORMULA:
+(publish(m,f) AND (m EQCONST Alice)) AND EXISTS a. ready(f,a)
+
+
+LOG:
+@0 publish(Alice, doc1) ready(doc1, Bob)
+@1 publish(Mallory, doc2) ready(doc2, Alice)
+@2 publish(Alice, doc3)
+@3 publish(Alice, doc4) publish(Eve, doc5) ready(doc4, Charlie) ready(doc5, Bob)
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    m ∈ Complement of {Alice}
+
+        ❮
+
+        f ∈ Complement of {doc1}
+
+            ❮
+
+            false
+            ❯
+
+        f ∈ {doc1}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    m ∈ {Alice}
+
+        ❮
+
+        f ∈ Complement of {doc1}
+
+            ❮
+
+            false
+            ❯
+
+        f ∈ {doc1}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    m ∈ Complement of {Alice, Mallory}
+
+        ❮
+
+        f ∈ Complement of {doc2}
+
+            ❮
+
+            false
+            ❯
+
+        f ∈ {doc2}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    m ∈ {Alice}
+
+        ❮
+
+        f ∈ Complement of {doc2}
+
+            ❮
+
+            false
+            ❯
+
+        f ∈ {doc2}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    m ∈ {Mallory}
+
+        ❮
+
+        f ∈ Complement of {doc2}
+
+            ❮
+
+            false
+            ❯
+
+        f ∈ {doc2}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    m ∈ Complement of {Alice}
+
+        ❮
+
+        f ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    m ∈ {Alice}
+
+        ❮
+
+        f ∈ Complement of {doc3}
+
+            ❮
+
+            false
+            ❯
+
+        f ∈ {doc3}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    m ∈ Complement of {Alice, Eve}
+
+        ❮
+
+        f ∈ Complement of {doc4, doc5}
+
+            ❮
+
+            false
+            ❯
+
+        f ∈ {doc4}
+
+            ❮
+
+            false
+            ❯
+
+        f ∈ {doc5}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    m ∈ {Alice}
+
+        ❮
+
+        f ∈ Complement of {doc4, doc5}
+
+            ❮
+
+            false
+            ❯
+
+        f ∈ {doc5}
+
+            ❮
+
+            false
+            ❯
+
+        f ∈ {doc4}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    m ∈ {Eve}
+
+        ❮
+
+        f ∈ Complement of {doc4, doc5}
+
+            ❮
+
+            false
+            ❯
+
+        f ∈ {doc4}
+
+            ❮
+
+            false
+            ❯
+
+        f ∈ {doc5}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+
+================================================================================
+TEST 3: Hydra test case
+================================================================================
+Command:
+./hydra ./examples/ex.mdl ./examples/ex.log
+
+FORMULA:
+p0 OR (▷ [2,2] p1* p2)
+
+LOG:
+@0 p1 p2
+@0 p0 p2
+@1 p1
+@4 p0 p2
+@4 p1 p2
+@6 p0 p1 p2
+@7 p1
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    false
+    ❯
+0:1
+Explanation:
+    ❮
+
+    true
+    ❯
+1:0
+Explanation:
+    ❮
+
+    false
+    ❯
+4:0
+Explanation:
+    ❮
+
+    true
+    ❯
+4:1
+Explanation:
+    ❮
+
+    true
+    ❯
+
+================================================================================
+TEST 4: Hydra test modified with Arguments thesis
+================================================================================
+Command:
+./hydra ./examples/example_thesis_formula2.mdl ./examples/example_thesis_formula2.log
+
+FORMULA:
+p0(x,y) OR (▷ [2,2] p1* p2)
+
+LOG:
+@0 p1 p2
+@0 p0(Alice, 5) p2
+@1 p1
+@4 p0(Bob, 2) p2
+@4 p1 p2
+@6 p0(Eve, 7) p1 p2
+@7 p1
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+    ❯
+
+0:1
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {5}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {5}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+    ❯
+
+4:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+    ❯
+
+4:1
+Explanation:
+    ❮
+
+    x ∈ Complement of {}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            true
+            ❯
+        ❯
+
+    ❯
+
+================================================================================
+TEST 5: Simple AND with variable binding
+================================================================================
+Command:
+./hydra ./examples/test_simple_and.mdl ./examples/test_simple_and.log
+
+Formula:
+p(x,y) AND q(y,z)
+
+Log:
+@0 p(Alice,5) q(5,10)
+@1 p(Bob,3) q(4,8)
+@2 p(Alice,7) q(7,15)
+@3 p(Charlie,2) q(3,6)
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {5}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        y ∈ {5}
+
+            ❮
+
+            z ∈ Complement of {10}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {10}
+
+                ❮
+
+                false
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {5}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        y ∈ {5}
+
+            ❮
+
+            z ∈ Complement of {10}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {10}
+
+                ❮
+
+                true
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Bob}
+
+        ❮
+
+        y ∈ Complement of {4}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        y ∈ {4}
+
+            ❮
+
+            z ∈ Complement of {8}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {8}
+
+                ❮
+
+                false
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    x ∈ {Bob}
+
+        ❮
+
+        y ∈ Complement of {3, 4}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        y ∈ {4}
+
+            ❮
+
+            z ∈ Complement of {8}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {8}
+
+                ❮
+
+                false
+                ❯
+
+            ❯
+
+
+        y ∈ {3}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        ❯
+
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {7}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        y ∈ {7}
+
+            ❮
+
+            z ∈ Complement of {15}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {15}
+
+                ❮
+
+                false
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {7}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        y ∈ {7}
+
+            ❮
+
+            z ∈ Complement of {15}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {15}
+
+                ❮
+
+                true
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Charlie}
+
+        ❮
+
+        y ∈ Complement of {3}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        y ∈ {3}
+
+            ❮
+
+            z ∈ Complement of {6}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {6}
+
+                ❮
+
+                false
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    x ∈ {Charlie}
+
+        ❮
+
+        y ∈ Complement of {2, 3}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        y ∈ {3}
+
+            ❮
+
+            z ∈ Complement of {6}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {6}
+
+                ❮
+
+                false
+                ❯
+
+            ❯
+
+
+        y ∈ {2}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        ❯
+
+
+    ❯
+
+
+================================================================================
+TEST 6: Simple OR with shared variable
+================================================================================
+Command:
+./hydra ./examples/test_simple_or.mdl ./examples/test_simple_or.log
+
+Formula:
+p(x,y) OR q(x,z)
+
+Log:
+@0 p(Alice,5)
+@1 q(Bob,10)
+@2 p(Charlie,3) q(Charlie,15)
+@3 
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {5}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        y ∈ {5}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                true
+                ❯
+            ❯
+
+
+        ❯
+
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Bob}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+        ❯
+
+
+    x ∈ {Bob}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            z ∈ Complement of {10}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {10}
+
+                ❮
+
+                true
+                ❯
+
+            ❯
+
+        ❯
+
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Charlie}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+        ❯
+
+
+    x ∈ {Charlie}
+
+        ❮
+
+        y ∈ Complement of {3}
+
+            ❮
+
+            z ∈ Complement of {15}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {15}
+
+                ❮
+
+                true
+                ❯
+
+            ❯
+
+
+        y ∈ {3}
+
+            ❮
+
+            z ∈ Complement of {15}
+
+                ❮
+
+                true
+                ❯
+
+            z ∈ {15}
+
+                ❮
+
+                true
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+        ❯
+
+    ❯
+
+================================================================================
+TEST 7: Negation
+================================================================================
+Command:
+./hydra ./examples/test_negation.mdl ./examples/test_negation.log
+
+Formula:
+NOT p(x,y)
+
+Log:
+@0 p(Alice,5)
+@1 
+@2 p(Bob,3) p(Charlie,7)
+@3 q(Dave,10)
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            true
+            ❯
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {5}
+
+            ❮
+
+            true
+            ❯
+
+        y ∈ {5}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            true
+            ❯
+        ❯
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Bob, Charlie}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            true
+            ❯
+        ❯
+
+
+    x ∈ {Bob}
+
+        ❮
+
+        y ∈ Complement of {3}
+
+            ❮
+
+            true
+            ❯
+
+        y ∈ {3}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    x ∈ {Charlie}
+
+        ❮
+
+        y ∈ Complement of {7}
+
+            ❮
+
+            true
+            ❯
+
+        y ∈ {7}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            true
+            ❯
+        ❯
+
+    ❯
+
+
+================================================================================
+TEST 8: Complex AND/OR combination
+================================================================================
+Command:
+./hydra ./examples/test_complex_and_or.mdl ./examples/test_complex_and_or.log
+
+Formula:
+(p(x,y) AND q(y,z)) OR r(x,z)
+
+Log:
+@0 p(Alice,5) q(5,10)
+@1 r(Bob,20)
+@2 p(Charlie,3) q(4,15)
+@3 p(Dave,7) q(7,21) r(Dave,21)
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {5}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        y ∈ {5}
+
+            ❮
+
+            z ∈ Complement of {10}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {10}
+
+                ❮
+
+                false
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {5}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        y ∈ {5}
+
+            ❮
+
+            z ∈ Complement of {10}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {10}
+
+                ❮
+
+                true
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Bob}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+        ❯
+
+
+    x ∈ {Bob}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            z ∈ Complement of {20}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {20}
+
+                ❮
+
+                true
+                ❯
+
+            ❯
+
+        ❯
+
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Charlie}
+
+        ❮
+
+        y ∈ Complement of {4}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        y ∈ {4}
+
+            ❮
+
+            z ∈ Complement of {15}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {15}
+
+                ❮
+
+                false
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    x ∈ {Charlie}
+
+        ❮
+
+        y ∈ Complement of {3, 4}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        y ∈ {4}
+
+            ❮
+
+            z ∈ Complement of {15}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {15}
+
+                ❮
+
+                false
+                ❯
+
+            ❯
+
+
+        y ∈ {3}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        ❯
+
+
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Dave}
+
+        ❮
+
+        y ∈ Complement of {7}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        y ∈ {7}
+
+            ❮
+
+            z ∈ Complement of {21}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {21}
+
+                ❮
+
+                false
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    x ∈ {Dave}
+
+        ❮
+
+        y ∈ Complement of {7}
+
+            ❮
+
+            z ∈ Complement of {21}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {21}
+
+                ❮
+
+                true
+                ❯
+
+            ❯
+
+
+        y ∈ {7}
+
+            ❮
+
+            z ∈ Complement of {21}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {21}
+
+                ❮
+
+                true
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    ❯
+
+
+================================================================================
+TEST 9: Three-variable circular binding
+================================================================================
+Command:
+./hydra ./examples/test_three_vars.mdl ./examples/test_three_vars.log
+
+Formula:
+p(x,y) AND q(y,z) AND r(z,x)
+
+Log:
+@0 p(Alice,5) q(5,Bob) r(Bob,Alice)
+@1 p(Charlie,3) q(3,Dave)
+@2 p(Eve,7) q(7,Frank) r(Frank,Eve)
+@3 p(Alice,10) q(10,Bob) r(Bob,Charlie)
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {5}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        y ∈ {5}
+
+            ❮
+
+            z ∈ Complement of {Bob}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {Bob}
+
+                ❮
+
+                false
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {5}
+
+            ❮
+
+            z ∈ Complement of {Bob}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {Bob}
+
+                ❮
+
+                false
+                ❯
+
+            ❯
+
+
+        y ∈ {5}
+
+            ❮
+
+            z ∈ Complement of {Bob}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {Bob}
+
+                ❮
+
+                true
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Charlie}
+
+        ❮
+
+        y ∈ Complement of {3}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        y ∈ {3}
+
+            ❮
+
+            z ∈ Complement of {Dave}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {Dave}
+
+                ❮
+
+                false
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    x ∈ {Charlie}
+
+        ❮
+
+        y ∈ Complement of {3}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        y ∈ {3}
+
+            ❮
+
+            z ∈ Complement of {Dave}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {Dave}
+
+                ❮
+
+                false
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Eve}
+
+        ❮
+
+        y ∈ Complement of {7}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        y ∈ {7}
+
+            ❮
+
+            z ∈ Complement of {Frank}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {Frank}
+
+                ❮
+
+                false
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    x ∈ {Eve}
+
+        ❮
+
+        y ∈ Complement of {7}
+
+            ❮
+
+            z ∈ Complement of {Frank}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {Frank}
+
+                ❮
+
+                false
+                ❯
+
+            ❯
+
+
+        y ∈ {7}
+
+            ❮
+
+            z ∈ Complement of {Frank}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {Frank}
+
+                ❮
+
+                true
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice, Charlie}
+
+        ❮
+
+        y ∈ Complement of {10}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        y ∈ {10}
+
+            ❮
+
+            z ∈ Complement of {Bob}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {Bob}
+
+                ❮
+
+                false
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    x ∈ {Charlie}
+
+        ❮
+
+        y ∈ Complement of {10}
+
+            ❮
+
+            z ∈ Complement of {Bob}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {Bob}
+
+                ❮
+
+                false
+                ❯
+
+            ❯
+
+
+        y ∈ {10}
+
+            ❮
+
+            z ∈ Complement of {Bob}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {Bob}
+
+                ❮
+
+                false
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {10}
+
+            ❮
+
+            z ∈ Complement of {}
+
+                ❮
+
+                false
+                ❯
+            ❯
+
+
+        y ∈ {10}
+
+            ❮
+
+            z ∈ Complement of {Bob}
+
+                ❮
+
+                false
+                ❯
+
+            z ∈ {Bob}
+
+                ❮
+
+                false
+                ❯
+
+            ❯
+
+
+        ❯
+
+
+    ❯
+
+
+================================================================================
+TEST 10: Same variables in different predicates
+================================================================================
+Command:
+./hydra ./examples/test_no_match.mdl ./examples/test_no_match.log
+
+Formula:
+p(x,y) AND q(x,y)
+
+Log:
+@0 p(Alice,5) q(Alice,10)
+@1 p(Bob,3) q(Charlie,3)
+@2 p(Dave,7) q(Dave,7)
+@3 p(Eve,2) q(Frank,8)
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {5, 10}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {10}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {5}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Bob, Charlie}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    x ∈ {Charlie}
+
+        ❮
+
+        y ∈ Complement of {3}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {3}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    x ∈ {Bob}
+
+        ❮
+
+        y ∈ Complement of {3}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {3}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Dave}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    x ∈ {Dave}
+
+        ❮
+
+        y ∈ Complement of {7}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {7}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Eve, Frank}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    x ∈ {Frank}
+
+        ❮
+
+        y ∈ Complement of {8}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {8}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    x ∈ {Eve}
+
+        ❮
+
+        y ∈ Complement of {2}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {2}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+
+================================================================================
+TEST 11: Propositional atoms - AND
+================================================================================
+Command:
+./hydra ./examples/test_prop_and.mdl ./examples/test_prop_and.log
+
+Formula:
+p AND q
+
+Log:
+@0 p q
+@1 p
+@2 q
+@3 
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    true
+    ❯
+1:0
+Explanation:
+    ❮
+
+    false
+    ❯
+2:0
+Explanation:
+    ❮
+
+    false
+    ❯
+3:0
+Explanation:
+    ❮
+
+    false
+    ❯
+
+
+
+================================================================================
+TEST 12: Propositional atoms - OR
+================================================================================
+Command:
+./hydra ./examples/test_prop_or.mdl ./examples/test_prop_or.log
+
+Formula:
+p OR q
+
+Log:
+@0 p q
+@1 p
+@2 q
+@3 
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    true
+    ❯
+1:0
+Explanation:
+    ❮
+
+    true
+    ❯
+2:0
+Explanation:
+    ❮
+
+    true
+    ❯
+3:0
+Explanation:
+    ❮
+
+    false
+    ❯
+
+
+
+================================================================================
+TEST 13: Mixed propositional and first-order - AND
+================================================================================
+Command:
+./hydra ./examples/test_mixed_and.mdl ./examples/test_mixed_and.log
+
+Formula:
+p AND q(x,y)
+
+Log:
+@0 p q(Alice,5)
+@1 p
+@2 q(Bob,10)
+@3 p q(Charlie,3) q(Dave,7)
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {5}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {5}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Bob}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    x ∈ {Bob}
+
+        ❮
+
+        y ∈ Complement of {10}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {10}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Charlie, Dave}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    x ∈ {Charlie}
+
+        ❮
+
+        y ∈ Complement of {3}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {3}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    x ∈ {Dave}
+
+        ❮
+
+        y ∈ Complement of {7}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {7}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    ❯
+
+
+================================================================================
+TEST 14: Mixed propositional and first-order - OR
+================================================================================
+Command:
+./hydra ./examples/test_mixed_or.mdl ./examples/test_mixed_or.log
+
+Formula:
+p OR q(x,y)
+
+Log:
+@0 p q(Alice,5)
+@1 p
+@2 q(Bob,10)
+@3 
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            true
+            ❯
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {5}
+
+            ❮
+
+            true
+            ❯
+
+        y ∈ {5}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            true
+            ❯
+        ❯
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Bob}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    x ∈ {Bob}
+
+        ❮
+
+        y ∈ Complement of {10}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {10}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+    ❯
+
+
+================================================================================
+TEST 15: Negation of propositional atom
+================================================================================
+Command:
+./hydra ./examples/test_prop_neg.mdl ./examples/test_prop_neg.log
+
+Formula:
+NOT p
+
+Log:
+@0 p
+@1 q
+@2 p q
+@3 
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    false
+    ❯
+1:0
+Explanation:
+    ❮
+
+    true
+    ❯
+2:0
+Explanation:
+    ❮
+
+    false
+    ❯
+3:0
+Explanation:
+    ❮
+
+    true
+    ❯
+
+
+================================================================================
+TEST 16: Negation of AND with variables
+================================================================================
+Command:
+./hydra ./examples/test_neg_and.mdl ./examples/test_neg_and.log
+
+Formula:
+NOT (p(x,y) AND q(y,x))
+
+Log:
+@0 p(Alice,Bob) q(Bob,Alice)
+@1 p(Charlie,Dave) q(Dave,Frank)
+@2 p(Eve,5) q(5,Eve)
+@3 
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            true
+            ❯
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {Bob}
+
+            ❮
+
+            true
+            ❯
+
+        y ∈ {Bob}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Charlie, Frank}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            true
+            ❯
+        ❯
+
+
+    x ∈ {Frank}
+
+        ❮
+
+        y ∈ Complement of {Dave}
+
+            ❮
+
+            true
+            ❯
+
+        y ∈ {Dave}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    x ∈ {Charlie}
+
+        ❮
+
+        y ∈ Complement of {Dave}
+
+            ❮
+
+            true
+            ❯
+
+        y ∈ {Dave}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Eve}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            true
+            ❯
+        ❯
+
+
+    x ∈ {Eve}
+
+        ❮
+
+        y ∈ Complement of {5}
+
+            ❮
+
+            true
+            ❯
+
+        y ∈ {5}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            true
+            ❯
+        ❯
+
+    ❯
+
+
+================================================================================
+TEST 17: Arity mismatch - propositional vs first-order
+================================================================================
+Command:
+./hydra ./examples/test_arity_mismatch.mdl ./examples/test_arity_mismatch.log
+
+Formula:
+p(x,y) AND q(y,x)
+
+Log:
+@0 p q(2,Bob)
+@1 p(Alice,5) q(5,Alice)
+@2 q(Charlie,Dave)
+@3 p(Eve,7)
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Bob}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    x ∈ {Bob}
+
+        ❮
+
+        y ∈ Complement of {2}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {2}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {5}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {5}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Dave}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    x ∈ {Dave}
+
+        ❮
+
+        y ∈ Complement of {Charlie}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {Charlie}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Eve}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    x ∈ {Eve}
+
+        ❮
+
+        y ∈ Complement of {7}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {7}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+
+================================================================================
+TEST 18: Arity mismatch - first-order in log vs propositional in formula
+================================================================================
+Command:
+./hydra ./examples/test_arity_mismatch2.mdl ./examples/test_arity_mismatch2.log
+
+Formula:
+p AND q(y,x)
+
+Log:
+@0 p q(2,Bob)
+@1 p(Alice,5) q(5,Alice)
+@2 q(Charlie,Dave)
+@3 p(Eve,7)
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    y ∈ Complement of {2}
+
+        ❮
+
+        x ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    y ∈ {2}
+
+        ❮
+
+        x ∈ Complement of {Bob}
+
+            ❮
+
+            false
+            ❯
+
+        x ∈ {Bob}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    y ∈ Complement of {5}
+
+        ❮
+
+        x ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    y ∈ {5}
+
+        ❮
+
+        x ∈ Complement of {Alice}
+
+            ❮
+
+            false
+            ❯
+
+        x ∈ {Alice}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    y ∈ Complement of {Charlie}
+
+        ❮
+
+        x ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    y ∈ {Charlie}
+
+        ❮
+
+        x ∈ Complement of {Dave}
+
+            ❮
+
+            false
+            ❯
+
+        x ∈ {Dave}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    y ∈ Complement of {}
+
+        ❮
+
+        x ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+    ❯
+
+
+================================================================================
+TEST 19: Simple EXISTS quantification
+================================================================================
+Command:
+./hydra ./examples/test_exists_simple.mdl ./examples/test_exists_simple.log
+
+Formula:
+EXISTS r. q(x,r)
+
+Log:
+@0 q(Alice,5)
+@1 q(Bob,10) q(Bob,20)
+@2 p(Charlie,7)
+@3 q(Dave,3) q(Dave,8) q(Eve,12)
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        false
+        ❯
+
+    x ∈ {Alice}
+
+        ❮
+
+        true
+        ❯
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Bob}
+
+        ❮
+
+        false
+        ❯
+
+    x ∈ {Bob}
+
+        ❮
+
+        true
+        ❯
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {}
+
+        ❮
+
+        false
+        ❯
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Dave, Eve}
+
+        ❮
+
+        false
+        ❯
+
+    x ∈ {Eve}
+
+        ❮
+
+        true
+        ❯
+
+    x ∈ {Dave}
+
+        ❮
+
+        true
+        ❯
+
+    ❯
+
+
+================================================================================
+TEST 20: EXISTS with AND - variable binding through EXISTS
+================================================================================
+Command:
+./hydra ./examples/test_exists_and.mdl ./examples/test_exists_and.log
+
+Formula:
+p(x,y) AND EXISTS r. q(y,r)
+
+Log:
+@0 p(Alice,5) q(5,10)
+@1 p(Bob,3) q(4,8)
+@2 p(Alice,7) q(7,15) q(7,20)
+@3 p(Charlie,2)
+
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {5}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {5}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {5}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {5}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Bob}
+
+        ❮
+
+        y ∈ Complement of {4}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {4}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    x ∈ {Bob}
+
+        ❮
+
+        y ∈ Complement of {3, 4}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {4}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {3}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {7}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {7}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {7}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {7}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Charlie}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    x ∈ {Charlie}
+
+        ❮
+
+        y ∈ Complement of {2}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {2}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+
+================================================================================
+TEST 21: EXISTS with complex subformula - intermediate variable binding
+================================================================================
+Command:
+./hydra ./examples/test_exists_complex.mdl ./examples/test_exists_complex.log
+
+Formula:
+EXISTS r. (p(x,r) AND q(r,y))
+
+Log:
+@0 p(Alice,5) q(5,Bob)
+@1 p(Charlie,3) q(4,Dave)
+@2 p(Eve,7) q(7,Frank) p(Eve,8) q(8,Frank)
+@3 p(Alice,10) q(10,Bob) q(10,Charlie)
+
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {Bob}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {Bob}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {Bob}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {Bob}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Charlie}
+
+        ❮
+
+        y ∈ Complement of {Dave}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {Dave}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    x ∈ {Charlie}
+
+        ❮
+
+        y ∈ Complement of {Dave}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {Dave}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Eve}
+
+        ❮
+
+        y ∈ Complement of {Frank}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {Frank}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    x ∈ {Eve}
+
+        ❮
+
+        y ∈ Complement of {Frank}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {Frank}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {Bob, Charlie}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {Bob, Charlie}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {Bob, Charlie}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {Bob, Charlie}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    ❯
+
+
+
+================================================================================
+TEST 22: Nested EXISTS quantification
+================================================================================
+Command:
+./hydra ./examples/test_exists_nested.mdl ./examples/test_exists_nested.log
+
+Formula:
+EXISTS r. EXISTS s. p(x,r,s)
+
+Log:
+@0 p(Alice,5,10)
+@1 p(Bob,3,7) p(Bob,4,8)
+@2 q(Charlie,2,6)
+@3 p(Dave,1,2) p(Dave,3,4) p(Dave,5,6)
+
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        false
+        ❯
+
+    x ∈ {Alice}
+
+        ❮
+
+        true
+        ❯
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Bob}
+
+        ❮
+
+        false
+        ❯
+
+    x ∈ {Bob}
+
+        ❮
+
+        true
+        ❯
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {}
+
+        ❮
+
+        false
+        ❯
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Dave}
+
+        ❮
+
+        false
+        ❯
+
+    x ∈ {Dave}
+
+        ❮
+
+        true
+        ❯
+
+    ❯
+
+
+================================================================================
+TEST 23: EXISTS with OR - disjunction inside quantification
+================================================================================
+Command:
+./hydra ./examples/test_exists_or.mdl ./examples/test_exists_or.log
+
+Formula:
+EXISTS r. (p(x,r) OR q(y,r))
+
+Log:
+@0 p(Alice,5) q(Bob,10)
+@1 p(Charlie,3)
+@2 q(Dave,7)
+@3 
+
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {Bob}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {Bob}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {Bob}
+
+            ❮
+
+            true
+            ❯
+
+        y ∈ {Bob}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Charlie}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+
+    x ∈ {Charlie}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            true
+            ❯
+        ❯
+
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {}
+
+        ❮
+
+        y ∈ Complement of {Dave}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {Dave}
+
+            ❮
+
+            true
+            ❯
+
+        ❯
+
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {}
+
+        ❮
+
+        y ∈ Complement of {}
+
+            ❮
+
+            false
+            ❯
+        ❯
+
+    ❯
+
+
+================================================================================
+TEST 24: Negated EXISTS (universal quantification pattern)
+================================================================================
+Command:
+./hydra ./examples/test_exists_negation.mdl ./examples/test_exists_negation.log
+
+Formula:
+NOT EXISTS r. q(x,r)
+
+Log:
+@0 q(Alice,5)
+@1 p(Bob,10)
+@2 q(Charlie,3) q(Charlie,7)
+@3 
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        true
+        ❯
+
+    x ∈ {Alice}
+
+        ❮
+
+        false
+        ❯
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {}
+
+        ❮
+
+        true
+        ❯
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Charlie}
+
+        ❮
+
+        true
+        ❯
+
+    x ∈ {Charlie}
+
+        ❮
+
+        false
+        ❯
+
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {}
+
+        ❮
+
+        true
+        ❯
+    ❯
+
+
+================================================================================
+TEST 25: Simple FORALL - all values satisfy
+================================================================================
+Note: FORALL is implemented as: FORALL x. φ = NOT EXISTS x. NOT φ
+
+Command:
+./hydra ./examples/test_forall_simple.mdl ./examples/test_forall_simple.log
+
+Formula:
+FORALL r. q(x,r)
+
+Log:
+@0 q(Alice,5) q(Alice,10)
+@1 q(Bob,3) q(Charlie,5)
+@2 q(Dave,7)
+@3 q(Eve,2) q(Eve,4) q(Eve,6)
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        false
+        ❯
+
+    x ∈ {Alice}
+
+        ❮
+
+        false
+        ❯
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Bob, Charlie}
+
+        ❮
+
+        false
+        ❯
+
+    x ∈ {Charlie}
+
+        ❮
+
+        false
+        ❯
+
+    x ∈ {Bob}
+
+        ❮
+
+        false
+        ❯
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Dave}
+
+        ❮
+
+        false
+        ❯
+
+    x ∈ {Dave}
+
+        ❮
+
+        false
+        ❯
+
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Eve}
+
+        ❮
+
+        false
+        ❯
+
+    x ∈ {Eve}
+
+        ❮
+
+        false
+        ❯
+
+    ❯
+
+
+================================================================================
+TEST 26: FORALL with AND - variable binding through FORALL
+================================================================================
+Note: FORALL is implemented as: FORALL x. φ = NOT EXISTS x. NOT φ
+
+Command:
+./hydra ./examples/test_forall_and.mdl ./examples/test_forall_and.log
+
+Formula:
+p(x,y) AND FORALL r. q(y,r)
+
+Log:
+@0 p(Alice,5) q(5,10) q(5,20)
+@1 p(Bob,3) q(3,8)
+@2 p(Alice,7) q(7,15)
+@3 p(Charlie,2) q(2,6) q(2,9)
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {5}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {5}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {5}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {5}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Bob}
+
+        ❮
+
+        y ∈ Complement of {3}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {3}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    x ∈ {Bob}
+
+        ❮
+
+        y ∈ Complement of {3}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {3}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice}
+
+        ❮
+
+        y ∈ Complement of {7}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {7}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    x ∈ {Alice}
+
+        ❮
+
+        y ∈ Complement of {7}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {7}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Charlie}
+
+        ❮
+
+        y ∈ Complement of {2}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {2}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    x ∈ {Charlie}
+
+        ❮
+
+        y ∈ Complement of {2}
+
+            ❮
+
+            false
+            ❯
+
+        y ∈ {2}
+
+            ❮
+
+            false
+            ❯
+
+        ❯
+
+
+    ❯
+
+
+================================================================================
+TEST 27: FORALL - checking when some x values fail
+================================================================================
+Note: FORALL is implemented as: FORALL x. φ = NOT EXISTS x. NOT φ
+
+Command:
+./hydra ./examples/test_forall_complex.mdl ./examples/test_forall_complex.log
+
+Formula:
+FORALL r. p(x,r)
+
+Log:
+@0 p(Alice,5) p(Alice,10) p(Bob,5) p(Bob,10)
+@1 p(Charlie,3) p(Charlie,7) p(Dave,3) p(Eve,7)
+@2 p(Frank,2) p(Frank,5) p(George,2)
+@3 p(Alice,1) p(Alice,4) p(Bob,1)
+
+RESULT:
+0:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice, Bob}
+
+        ❮
+
+        false
+        ❯
+
+    x ∈ {Alice, Bob}
+
+        ❮
+
+        false
+        ❯
+
+    ❯
+
+1:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Charlie, Dave, Eve}
+
+        ❮
+
+        false
+        ❯
+
+    x ∈ {Eve}
+
+        ❮
+
+        false
+        ❯
+
+    x ∈ {Dave}
+
+        ❮
+
+        false
+        ❯
+
+    x ∈ {Charlie}
+
+        ❮
+
+        false
+        ❯
+
+    ❯
+
+2:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Frank, George}
+
+        ❮
+
+        false
+        ❯
+
+    x ∈ {George}
+
+        ❮
+
+        false
+        ❯
+
+    x ∈ {Frank}
+
+        ❮
+
+        false
+        ❯
+
+    ❯
+
+3:0
+Explanation:
+    ❮
+
+    x ∈ Complement of {Alice, Bob}
+
+        ❮
+
+        false
+        ❯
+
+    x ∈ {Bob}
+
+        ❮
+
+        false
+        ❯
+
+    x ∈ {Alice}
+
+        ❮
+
+        false
+        ❯
+
+    ❯
+
+
+================================================================================
+TEST 28: Nested quantifiers - FORALL then EXISTS
+================================================================================
+Note: FORALL is implemented as: FORALL x. φ = NOT EXISTS x. NOT φ
+
+Command:
+./hydra ./examples/test_forall_nested.mdl ./examples/test_forall_nested.log
+
+Formula:
+FORALL r. EXISTS x. p(x,r)
+
+Log:
+@0 p(Alice,5) p(Bob,10) p(Charlie,15)
+@1 p(Dave,3) p(Dave,7)
+@2 p(Eve,2) p(Frank,8)
+@3 p(Alice,1)
+
+RESULT:
+
+0:0
+Explanation:
+    ❮
+
+    false
+    ❯
+1:0
+Explanation:
+    ❮
+
+    false
+    ❯
+2:0
+Explanation:
+    ❮
+
+    false
+    ❯
+3:0
+Explanation:
+    ❮
+
+    false
+    ❯

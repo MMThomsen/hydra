@@ -1,5 +1,0 @@
-@0 p2(Alice,5)
-@2 p1(Alice,Bob) p1(Charlie,Dave)
-@3 p1(Alice,Eve)
-@5 p2(Charlie,10)
-@7 p1(Charlie,Frank) p1(George,Henry)

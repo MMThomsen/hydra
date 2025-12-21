@@ -46,6 +46,7 @@ int yyerror(Formula **fmla, yyscan_t scanner, const char *msg) {
 
 %token TOKEN_FALSE "FALSE"
 %token TOKEN_TRUE "TRUE"
+%token TOKEN_EQCONST "EQCONST"
 %token TOKEN_NEG "NEG"
 %token TOKEN_CONJ "CONJ"
 %token TOKEN_DISJ "DISJ"
@@ -147,6 +148,7 @@ args
 formula
     : "FALSE"                                           { $$ = new BoolFormula(false); }
     | "TRUE"                                            { $$ = new BoolFormula(true); }
+    | "ATOM" "EQCONST" term[t]                          { $$ = new EqConstFormula($1, $t);}
     | "ATOM"                                            { $$ = new AtomFormula($1, trie.getOrAdd($1), new std::vector<Term>(), 1); }
     | "ATOM" "OPEN" args[a] "CLOSE"                     { $$ = new AtomFormula($1, trie.getOrAdd($1), $a, 1); }
     | "NEG" formula[f]                                  { $$ = new NegFormula($f); }

@@ -88,6 +88,11 @@ public:
         // Add temporal ExistsMonitor in monitor
         mon = new NonTempMonitor(f, input_reader, input_reader->open_handle());
     }
+
+    void visit(EqConstFormula *f) {
+        // Add temporal ExistsMonitor in monitor
+        mon = new NonTempMonitor(f, input_reader, input_reader->open_handle());
+    }
 };
 
 class CollectVisitor : public RegexVisitor {
@@ -284,6 +289,8 @@ public:
     void visit(ExistsFormula *f) { 
         f->f->accept(*this);
     }
+
+    void visit(EqConstFormula *f) {}
 };
 
 class PrintRegexVisitor : public RegexVisitor {
@@ -404,6 +411,10 @@ public:
         f->f->accept(*this);
         fprintf(out, ")");
     }
+
+    void visit(EqConstFormula *f) { 
+        fprintf(out, "(%s = %s)", f->var_name, Term::to_string(*f->constant).c_str());
+    }
 };
 
 class PrintReelayFormulaVisitor : public FormulaVisitor {
@@ -465,6 +476,10 @@ public:
         CHECK(0);
     }
     void visit(ExistsFormula *f) {
+        CHECK(0);
+    }
+
+    void visit(EqConstFormula *f) {
         CHECK(0);
     }
 };

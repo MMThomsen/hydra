@@ -123,7 +123,6 @@ protected:
     struct CurEntry {
         DState *q;                                          // current state in the run from dfa->init
         std::optional<std::pair<timestamp, int> > last_sat; // last satisfaction in the run from dfa->init
-        // Before: (no last_sat_bindings field)
         Pdt::PdtT<Boolean> last_sat_bindings = Pdt::Leaf(FALSE);  // bindings at last satisfaction (NOT USING ANYMORE)
     } cur;
 
@@ -236,11 +235,6 @@ public:
         input_reader->read_handle(f_head);
 
         vector<Pdt::PdtT<Boolean>> bj = front_es();
-        // has_true_leaf(...) is used to collapse the PDT verdict to a single
-        // Boolean: true iff the predicate holds in this event (for a plain
-        // predicate, or for at least one variable binding in½ the parametric case).
-        // Such that bj_int represent whether the predicate with or without variable bindings
-        // has been observed in the log.
         vector<int> bj_int(bj.size());
         for (size_t i = 0; i < bj.size(); i++) {
             bj_int[i] = has_true_leaf(bj[i]) ? 1 : 0;
