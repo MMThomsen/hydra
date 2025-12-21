@@ -1,0 +1,4 @@
+@0 publish(Alice, doc1) ready(doc1, Bob)
+@1 publish(Mallory, doc2) ready(doc2, Alice)
+@2 publish(Alice, doc3)
+@3 publish(Alice, doc4) publish(Eve, doc5) ready(doc4, Charlie) ready(doc5, Bob)

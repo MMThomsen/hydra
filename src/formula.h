@@ -373,7 +373,6 @@ struct AndFormula : Formula {
         auto do_and = [](bool v1, bool v2) -> bool {
             return v1 && v2;
         };
-
         return Pdt::apply2<bool, bool, bool>(vars, do_and, f->eval(e, vars), g->eval(e, vars));
     }
     void accept(FormulaVisitor &v) override {
@@ -790,6 +789,7 @@ struct EqConstFormula : Formula {
         auto pdt_int = Pdt::pdt_of(pdt_vars, maps);
 
         auto to_bool = [](int v) -> bool { return v != 0; };
+
         return Pdt::apply1<int, bool>(vars, to_bool, pdt_int);
     }
 };

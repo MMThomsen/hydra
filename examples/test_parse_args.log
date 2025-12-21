@@ -1,4 +1,0 @@
-@0 p(Alice,5) q(5, Alice, employee)
-@1 p(Charlie,3)
-@2 p(Alice,5) q(2, Bob, manager)
-@3 p(Bob,5) q(1, Charlie, intern)

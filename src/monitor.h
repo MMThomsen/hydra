@@ -123,7 +123,6 @@ protected:
     struct CurEntry {
         DState *q;                                          // current state in the run from dfa->init
         std::optional<std::pair<timestamp, int> > last_sat; // last satisfaction in the run from dfa->init
-        // Before: (no last_sat_bindings field)
         Pdt::PdtT<Boolean> last_sat_bindings = Pdt::Leaf(FALSE);  // bindings at last satisfaction (NOT USING ANYMORE)
     } cur;
 
